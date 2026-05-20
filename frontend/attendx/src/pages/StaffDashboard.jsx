@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { Calendar, Clock, AlertTriangle, CheckCircle, Send } from 'lucide-react';
+import { Calendar, Clock, AlertTriangle, CheckCircle, Send, DollarSign } from 'lucide-react';
 
 const StaffDashboard = () => {
-  const { user, leaveRequests, requestLeave } = useAuth();
+  const { user, leaveRequests, requestLeave, token } = useAuth();
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -11,8 +12,34 @@ const StaffDashboard = () => {
   const [leaveType, setLeaveType] = useState('Regular');
   const [leaveReason, setLeaveReason] = useState('');
 
+  // Holiday Payout state
+  const [payoutDays, setPayoutDays] = useState('');
+  const [payoutMonth, setPayoutMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [remainingBalance, setRemainingBalance] = useState(0);
+
+
   // Toast state
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
+
+  const authHeaders = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  };
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/staff/profile`, { headers: authHeaders });
+        const data = await response.json();
+        setRemainingBalance(data.remainingBalance);
+      } catch (error) {
+        console.error('Failed to fetch profile', error);
+      }
+    };
+    if (token) {
+      fetchProfile();
+    }
+  }, [token]);
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -29,6 +56,41 @@ const StaffDashboard = () => {
     setLeaveType('Regular');
     setLeaveReason('');
     showToast('Leave request submitted successfully!');
+  };
+
+  const handlePayoutRequest = async (e) => {
+    e.preventDefault();
+    const days = Number(payoutDays);
+
+    if (!days || !payoutMonth) return;
+    if (!Number.isInteger(days) || days < 1) {
+      showToast('Enter a valid number of days.', 'error');
+      return;
+    }
+    if (days > remainingBalance) {
+      showToast('Payout days cannot exceed remaining holiday balance.', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/staff/holiday-request`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ days, targetMonth: payoutMonth }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || 'Failed to submit payout request.');
+      }
+
+      showToast('Holiday payout request submitted successfully!');
+      setPayoutDays('');
+      const profileResponse = await fetch(`${API_URL}/api/staff/profile`, { headers: authHeaders });
+      const profileData = await profileResponse.json();
+      setRemainingBalance(profileData.remainingBalance);
+    } catch (error) {
+      showToast(error.message || 'Failed to submit payout request.', 'error');
+    }
   };
 
   const myRequests = leaveRequests.filter(r => r.staffId === user.id);
@@ -66,43 +128,83 @@ const StaffDashboard = () => {
           </div>
           <div className="stat-value">{user.leaveDays || 0}</div>
         </div>
+        <div className="glass-panel stat-card">
+            <div className="stat-header">
+                <div className="stat-icon purple"><DollarSign size={24} /></div>
+                <h3>Holidays Remaining</h3>
+            </div>
+            <div className="stat-value">{remainingBalance}</div>
+        </div>
       </div>
 
-      <div className="glass-panel">
-        <h3 style={{ marginBottom: '1.5rem' }}>My Leave Requests</h3>
-        
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Reason</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {myRequests.map(request => (
-                <tr key={request.id}>
-                  <td style={{ fontWeight: 500 }}>{request.date}</td>
-                  <td>{request.type || 'Regular'}</td>
-                  <td>{request.reason}</td>
-                  <td>
-                    <span className={`badge badge-${request.status}`}>
-                      {request.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {myRequests.length === 0 && (
+      <div className="dashboard-grid-col-2" style={{ gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
+        <div className="glass-panel">
+          <h3 style={{ marginBottom: '1.5rem' }}>My Leave Requests</h3>
+          
+          <div className="table-container">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                    You haven't made any leave requests yet.
-                  </td>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Reason</th>
+                  <th>Status</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {myRequests.map(request => (
+                  <tr key={request.id}>
+                    <td style={{ fontWeight: 500 }}>{request.date}</td>
+                    <td>{request.type || 'Regular'}</td>
+                    <td>{request.reason}</td>
+                    <td>
+                      <span className={`badge badge-${request.status}`}>
+                        {request.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {myRequests.length === 0 && (
+                  <tr>
+                    <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                      You haven't made any leave requests yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="glass-panel">
+          <h3 style={{ marginBottom: '1.5rem' }}>Holiday Payout Request</h3>
+          <form onSubmit={handlePayoutRequest}>
+            <div className="form-group">
+              <label className="form-label">Number of Days</label>
+              <input
+                type="number"
+                className="form-control"
+                value={payoutDays}
+                onChange={(e) => setPayoutDays(e.target.value)}
+                required
+                min="1"
+                max={remainingBalance}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Target Month</label>
+              <input
+                type="month"
+                className="form-control"
+                value={payoutMonth}
+                onChange={(e) => setPayoutMonth(e.target.value)}
+                required
+              />
+            </div>
+            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
+              <DollarSign size={18} /> Submit Payout Request
+            </button>
+          </form>
         </div>
       </div>
 
@@ -175,4 +277,3 @@ const StaffDashboard = () => {
   );
 };
 
-export default StaffDashboard;

@@ -3,8 +3,8 @@ import { useAuth } from '../hooks/useAuth';
 import { Users, UserPlus, CheckCircle, XCircle, Calendar, Download } from 'lucide-react';
 
 const AdminDashboard = () => {
-  const { users, leaveRequests, createStaff, updateLeaveStatus } = useAuth();
-  const [activeTab, setActiveTab] = useState('staff'); // staff, requests, new-staff
+  const { users, leaveRequests, holidayRequests, createStaff, updateLeaveStatus } = useAuth();
+  const [activeTab, setActiveTab] = useState('staff'); // staff, requests, payouts, new-staff
   
   // New staff form state
   const [name, setName] = useState('');
@@ -37,8 +37,15 @@ const AdminDashboard = () => {
     } else if (activeTab === 'requests') {
       csvContent += "Staff Name,Date,Type,Reason,Status\n";
       leaveRequests.forEach(req => {
-        const reason = req.reason.replace(/,/g, " "); // prevent comma collision
+        const reason = (req.reason || '').replace(/,/g, " ");
         csvContent += `${req.staffName},${req.date},${req.type || 'Regular'},${reason},${req.status}\n`;
+      });
+    } else if (activeTab === 'payouts') {
+      csvContent += "Staff Name,Days,Target Month,Submitted On\n";
+      holidayRequests.forEach(req => {
+        const name = req.userId?.name || 'Unknown';
+        const submittedOn = new Date(req.createdAt).toLocaleDateString();
+        csvContent += `${name},${req.days},${req.targetMonth},${submittedOn}\n`;
       });
     }
 
@@ -55,7 +62,7 @@ const AdminDashboard = () => {
     <div className="container fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2>Admin Dashboard</h2>
-        {(activeTab === 'staff' || activeTab === 'requests') && (
+        {(activeTab === 'staff' || activeTab === 'requests' || activeTab === 'payouts') && (
           <button className="btn btn-secondary" onClick={exportToCSV}>
             <Download size={18} /> Export CSV
           </button>
@@ -95,6 +102,12 @@ const AdminDashboard = () => {
             onClick={() => setActiveTab('requests')}
           >
             Leave Requests
+          </div>
+          <div 
+            className={`auth-tab ${activeTab === 'payouts' ? 'active' : ''}`}
+            onClick={() => setActiveTab('payouts')}
+          >
+            Holiday Payouts
           </div>
           <div 
             className={`auth-tab ${activeTab === 'new-staff' ? 'active' : ''}`}
@@ -183,6 +196,38 @@ const AdminDashboard = () => {
                   <tr>
                     <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>
                       No leave requests found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'payouts' && (
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Staff Member</th>
+                  <th>Days</th>
+                  <th>Target Month</th>
+                  <th>Submitted On</th>
+                </tr>
+              </thead>
+              <tbody>
+                {holidayRequests.map(request => (
+                  <tr key={request._id}>
+                    <td style={{ fontWeight: 500 }}>{request.userId?.name || 'Unknown'}</td>
+                    <td>{request.days}</td>
+                    <td>{request.targetMonth}</td>
+                    <td>{new Date(request.createdAt).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+                {holidayRequests.length === 0 && (
+                  <tr>
+                    <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>
+                      No holiday payout requests found
                     </td>
                   </tr>
                 )}

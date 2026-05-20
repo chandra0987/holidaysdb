@@ -1,25 +1,14 @@
 const router = require("express").Router();
 const auth = require("../middleware/auth");
-const User = require("../models/User");
-const DuvetDay = require("../models/Day");
-const HolidayRequest = require("../models/HolidayRequest");
+const {
+  getProfile,
+  logDuvetDay,
+  createHolidayRequest
+} = require("../controllers/staffControlller");
 
-router.get("/profile", auth, async (req, res) => {
-  const user = await User.findById(req.user.id);
-
-  const remainingBalance =
-    user.holidayEntitlement +
-    user.carryOver -
-    user.daysTaken;
-
-  res.json({
-    ...user._doc,
-    remainingBalance,
-    duvetRemaining: 8 - user.duvetDaysUsed
-  });
-});
-
-router.post("/duvet-day", auth, async (req, res) => {
+router.get("/profile", auth, getProfile);
+router.post("/duvet-day", auth, logDuvetDay);
+router.post("/holiday-request", auth, createHolidayRequest);
   const { date, note } = req.body;
 
   const user = await User.findById(req.user.id);

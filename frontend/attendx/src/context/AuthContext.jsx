@@ -13,6 +13,7 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => localStorage.getItem('attendx_token') || null);
   const [users, setUsers] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
+  const [holidayRequests, setHolidayRequests] = useState([]);
 
   const authHeaders = () => ({
     'Content-Type': 'application/json',
@@ -67,7 +68,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const fetchLeaveRequests = async () => {
+  const fetchHolidayRequests = async () => {
     if (!token) return;
     try {
       const response = await fetch(`${API_URL}/api/admin/holiday-requests`, {
@@ -75,9 +76,9 @@ export const AuthProvider = ({ children }) => {
       });
       if (!response.ok) return;
       const data = await response.json();
-      setLeaveRequests(data.data || []);
+      setHolidayRequests(data.data || []);
     } catch (error) {
-      console.error('Fetch leave requests error:', error);
+      console.error('Fetch holiday requests error:', error);
     }
   };
 
@@ -122,7 +123,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (token && user?.role === 'admin') {
       fetchUsers();
-      fetchLeaveRequests();
+      fetchHolidayRequests();
     }
   }, [token, user]);
 
@@ -159,6 +160,7 @@ export const AuthProvider = ({ children }) => {
       token,
       users,
       leaveRequests,
+      holidayRequests,
       login,
       logout,
       createStaff,
