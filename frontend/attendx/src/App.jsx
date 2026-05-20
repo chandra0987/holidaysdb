@@ -55,6 +55,7 @@ function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/admin" element={<AdminRegister />} />
         <Route path="/admin-register" element={<AdminRegister />} />
         <Route 
           path="/admin/*" 

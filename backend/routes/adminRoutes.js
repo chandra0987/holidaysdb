@@ -7,6 +7,7 @@ const {
   getAllStaff,
   createStaff,
   createAdmin,
+  createAdminPublic,
   getHolidayRequests,
   getDuvetLogs,
   exportPayrollCSV
@@ -38,6 +39,12 @@ router.post(
   "/register",
   auth,
   createAdmin
+);
+
+// PUBLIC CREATE ADMIN - only when no admin exists
+router.post(
+  "/register-public",
+  createAdminPublic
 );
 
 // GET HOLIDAY REQUESTS
