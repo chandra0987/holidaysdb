@@ -2,6 +2,7 @@ const User = require("../models/User");
 const DuvetDay = require("../models/Day");
 const HolidayRequest = require("../models/HolidayRequest");
 
+
 const getBalanceData = (user) => {
   const holidayEntitlement = user.holidayEntitlement || 0;
   const carryOver = user.carryOver || 0;

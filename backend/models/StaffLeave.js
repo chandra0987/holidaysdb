@@ -13,7 +13,8 @@ const staffLeaveSchema = new mongoose.Schema(
     },
     serviceYears: {
       type: Number,
-      default: 0,
+      default: 0, 
+      // Consider adding validation to ensure this is a non-negative integer
     },
     carryOverDays: {
       type: Number,
