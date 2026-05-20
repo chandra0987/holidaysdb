@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { LogIn, AlertCircle } from 'lucide-react';
 
@@ -83,13 +83,6 @@ const Login = () => {
             <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
               <LogIn size={20} /> Sign In
             </button>
-
-            <div style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.875rem' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Need an admin account? </span>
-              <Link to="/admin-register" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>
-                Register here
-              </Link>
-            </div>
             
           </form>
         </div>
