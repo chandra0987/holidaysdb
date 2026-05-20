@@ -26,6 +26,15 @@ const AdminDashboard = () => {
 
   const staffMembers = users.filter(u => u.role === 'staff');
 
+  const getRemainingBalance = (staff) =>
+    staff.remainingBalance ??
+    ((staff.holidayEntitlement ?? 0) + (staff.carryOver ?? 0) - (staff.daysTaken ?? 0));
+
+  const getOverdue = (staff) => {
+    const balance = getRemainingBalance(staff);
+    return balance < 0 ? Math.abs(balance) : 0;
+  };
+
   const csvValue = (value) => {
     const text = `${value ?? ''}`;
     return `"${text.replace(/"/g, '""')}"`;
@@ -121,27 +130,44 @@ const AdminDashboard = () => {
         </div>
 
         {activeTab === 'staff' && (
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Employee ID / Name</th>
-                  <th>Monthly Holiday Paid Days Requested</th>
-                  <th>Duvet Days taken in current pay cycle</th>
-                  <th>Year-to-date outstanding balances</th>
-                </tr>
-              </thead>
-              <tbody>
-                {staffMembers.map(staff => (
-                  <tr key={staff.id}>
-                    <td style={{ fontWeight: 500 }}>{`${staff.id || staff._id || ''} / ${staff.name || ''}`}</td>
-                    <td>{staff.leaveDays ?? staff.daysTaken ?? 0}</td>
-                    <td>{staff.duvetDaysUsed ?? 0}</td>
-                    <td>{staff.remainingBalance ?? ((staff.holidayEntitlement ?? 0) + (staff.carryOver ?? 0) - (staff.daysTaken ?? 0))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="staff-card-grid">
+            {staffMembers.length > 0 ? staffMembers.map(staff => {
+              const remainingBalance = getRemainingBalance(staff);
+              const overdue = getOverdue(staff);
+              return (
+                <div className="staff-card" key={staff.id || staff._id}>
+                  <div className="staff-card-top">
+                    <div>
+                      <div className="staff-card-label">Name</div>
+                      <div className="staff-card-value">{staff.name || 'Unknown'}</div>
+                    </div>
+                    <div className="staff-card-badge">
+                      <span className="badge badge-approved">{staff.department || 'No Dept'}</span>
+                    </div>
+                  </div>
+                  <div className="staff-card-row">
+                    <div>
+                      <div className="staff-card-label">Remaining Balance</div>
+                      <div className="staff-card-value">{remainingBalance}</div>
+                    </div>
+                    <div>
+                      <div className="staff-card-label">Overdue</div>
+                      <div className={`staff-card-value ${overdue > 0 ? 'overdue' : 'normal'}`}>
+                        {overdue > 0 ? overdue : '0'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="staff-card-meta">
+                    <div>{`Entitlement: ${staff.holidayEntitlement ?? 0}`}</div>
+                    <div>{`Taken: ${staff.daysTaken ?? 0}`}</div>
+                  </div>
+                </div>
+              );
+            }) : (
+              <div className="empty-card">
+                No staff members available.
+              </div>
+            )}
           </div>
         )}
 

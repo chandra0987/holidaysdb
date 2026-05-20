@@ -384,7 +384,7 @@ textarea.form-control {
   color: var(--text-main);
 }
 
-.request-card-body {
+..request-card-body {
   display: grid;
   gap: 1rem;
 }
@@ -403,9 +403,81 @@ textarea.form-control {
 }
 
 .empty-card {
-  border-style: dashed;
+  border: 1px dashed var(--border);
+  padding: 2rem;
+  border-radius: 24px;
   text-align: center;
   color: var(--text-muted);
+}
+
+.staff-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.staff-card {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.98));
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 24px;
+  padding: 1.5rem;
+  color: white;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+}
+
+.staff-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.staff-card-label {
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+
+.staff-card-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.staff-card-badge {
+  align-self: center;
+}
+
+.staff-card-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.staff-card-row div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.staff-card-value.normal {
+  color: #cbd5e1;
+}
+
+.staff-card-value.overdue {
+  color: #fecaca;
+}
+
+.staff-card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: rgba(226, 232, 240, 0.74);
+  font-size: 0.9rem;
 }
 
 table {
