@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Calendar, Clock, AlertTriangle, CheckCircle, Send } from 'lucide-react';
 
 const StaffDashboard = () => {
   const { user, leaveRequests, requestLeave } = useAuth();
+  const navigate = useNavigate();
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -35,11 +37,16 @@ const StaffDashboard = () => {
 
   return (
     <div className="container fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', gap: '1rem', flexWrap: 'wrap' }}>
         <h2>Welcome, {user.name}</h2>
-        <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-          <Calendar size={18} /> Request Leave
-        </button>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+            <Calendar size={18} /> Request Leave
+          </button>
+          <button className="btn btn-secondary" onClick={() => navigate('/staff/holiday-request')}>
+            <Calendar size={18} /> Open Holiday Request
+          </button>
+        </div>
       </div>
 
       <div className="dashboard-grid">
