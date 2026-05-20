@@ -314,3 +314,13 @@ exports.createAdminPublic = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// CHECK IF ANY ADMIN EXISTS
+exports.adminExists = async (req, res) => {
+  try {
+    const count = await User.countDocuments({ role: 'admin' });
+    res.status(200).json({ success: true, exists: count > 0 });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

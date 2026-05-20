@@ -8,6 +8,7 @@ const {
   createStaff,
   createAdmin,
   createAdminPublic,
+  adminExists,
   getHolidayRequests,
   getDuvetLogs,
   exportPayrollCSV
@@ -45,6 +46,12 @@ router.post(
 router.post(
   "/register-public",
   createAdminPublic
+);
+
+// CHECK IF ADMIN EXISTS
+router.get(
+  "/exists",
+  adminExists
 );
 
 // GET HOLIDAY REQUESTS
