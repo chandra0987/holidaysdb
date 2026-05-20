@@ -1,8 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Login from './pages/Login';
+import AdminLogin from './pages/AdminLogin';
+import AdminRegister from './pages/AdminRegister';
 import AdminDashboard from './pages/AdminDashboard';
 import StaffDashboard from './pages/StaffDashboard';
+import HolidayRequest from './pages/HolidayRequest';
 import { LogOut, User } from 'lucide-react';
 
 const ProtectedRoute = ({ children, role }) => {
@@ -53,6 +56,9 @@ function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/admin-setup" element={<AdminRegister />} />
+        <Route path="/admin-register" element={<AdminRegister />} />
         <Route 
           path="/admin/*" 
           element={
@@ -66,6 +72,14 @@ function App() {
           element={
             <ProtectedRoute role="staff">
               <StaffDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/staff/holiday-request" 
+          element={
+            <ProtectedRoute role="staff">
+              <HolidayRequest />
             </ProtectedRoute>
           } 
         />
