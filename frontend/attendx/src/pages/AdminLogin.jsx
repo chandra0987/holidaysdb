@@ -3,28 +3,23 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { LogIn, AlertCircle, ShieldCheck } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
 const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
+  const { login, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const loggedInUser = localStorage.getItem('attendx_user');
-    const storedToken = localStorage.getItem('attendx_token');
-    if (loggedInUser && storedToken) {
-      const parsedUser = JSON.parse(loggedInUser);
-      if (parsedUser.role === 'admin') {
+    if (user) {
+      if (user.role === 'admin') {
         navigate('/admin');
       } else {
-        navigate('/staff');
+        // Non-admin tried to login here
+        setError('Only admin accounts can sign in here');
       }
     }
-  }, [navigate]);
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,34 +30,10 @@ const AdminLogin = () => {
       return;
     }
 
-    try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data?.message || 'Invalid credentials');
-        return;
-      }
-
-      if (data.user.role !== 'admin') {
-        setError('Only admin accounts can sign in here');
-        return;
-      }
-
-      setUser(data.user);
-      setToken(data.token);
-      localStorage.setItem('attendx_user', JSON.stringify(data.user));
-      localStorage.setItem('attendx_token', data.token);
-      navigate('/admin');
-    } catch (err) {
-      setError('Login failed. Please try again.');
+    const success = await login(email, password);
+    if (!success) {
+      setError('Invalid credentials');
+      return;
     }
   };
 

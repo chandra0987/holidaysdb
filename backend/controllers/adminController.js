@@ -129,6 +129,43 @@ exports.getHolidayRequests =
 
 };
 
+// UPDATE HOLIDAY REQUEST STATUS
+exports.updateHolidayRequestStatus = async (req, res) => {
+  try {
+    const { requestId, status } = req.body;
+
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status'
+      });
+    }
+
+    const request = await HolidayRequest.findByIdAndUpdate(
+      requestId,
+      { status },
+      { new: true }
+    );
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: 'Request not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: request
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // GET DUVET LOGS
 exports.getDuvetLogs = async (req, res) => {
 

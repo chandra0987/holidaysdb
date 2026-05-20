@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Calendar, Clock, AlertTriangle, CheckCircle, Send } from 'lucide-react';
 
 const StaffDashboard = () => {
-  const { user, leaveRequests, requestLeave } = useAuth();
+  const { user, leaveRequests, requestLeave, duvetLogs } = useAuth();
   const navigate = useNavigate();
   
   // Modal state
@@ -12,6 +12,7 @@ const StaffDashboard = () => {
   const [leaveDate, setLeaveDate] = useState('');
   const [leaveType, setLeaveType] = useState('Regular');
   const [leaveReason, setLeaveReason] = useState('');
+  const [leaveDays, setLeaveDays] = useState('1');
 
   // Toast state
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
@@ -23,17 +24,33 @@ const StaffDashboard = () => {
 
   const handleRequestLeave = (e) => {
     e.preventDefault();
-    if (!leaveDate || !leaveReason) return;
+    if (!leaveDate || !leaveReason || !leaveDays) return;
 
-    requestLeave({ date: leaveDate, type: leaveType, reason: leaveReason });
+    requestLeave({ 
+      date: leaveDate, 
+      type: leaveType, 
+      reason: leaveReason,
+      days: parseInt(leaveDays, 10),
+      targetMonth: new Date().toISOString().split('T')[0]
+    });
     setIsModalOpen(false);
     setLeaveDate('');
     setLeaveType('Regular');
     setLeaveReason('');
+    setLeaveDays('1');
     showToast('Leave request submitted successfully!');
   };
 
-  const myRequests = leaveRequests.filter(r => r.staffId === user.id);
+  const myRequests = leaveRequests.filter(r => r.userId === user._id || r.staffName === user.name);
+
+  // compute approved leave days (sum of days for approved requests)
+  const approvedLeaveDays = myRequests
+    .filter(r => r.status === 'approved')
+    .reduce((sum, r) => sum + (parseInt(r.days, 10) || 0), 0);
+
+  // duvet days logged by this user
+  const myDuvetLogs = (duvetLogs || []).filter(d => String(d.userId) === String(user._id) || (d.userId && d.userId._id && String(d.userId._id) === String(user._id)));
+  const duvetDaysCount = myDuvetLogs.length;
 
   return (
     <div className="container fade-in">
@@ -44,12 +61,12 @@ const StaffDashboard = () => {
             <Calendar size={18} /> Request Leave
           </button>
           <button className="btn btn-secondary" onClick={() => navigate('/staff/holiday-request')}>
-            <Calendar size={18} /> Open Holiday Request
+            <Calendar size={18} /> Holiday Payment
           </button>
         </div>
       </div>
 
-      <div className="dashboard-grid">
+      <div className="dashboard-grid full-width">
         <div className="glass-panel stat-card">
           <div className="stat-header">
             <div className="stat-icon blue"><Clock size={24} /></div>
@@ -69,9 +86,17 @@ const StaffDashboard = () => {
         <div className="glass-panel stat-card">
           <div className="stat-header">
             <div className="stat-icon orange"><AlertTriangle size={24} /></div>
-            <h3>Leave Days</h3>
+            <h3>Leave Days (approved)</h3>
           </div>
-          <div className="stat-value">{user.leaveDays || 0}</div>
+          <div className="stat-value">{approvedLeaveDays}</div>
+        </div>
+
+        <div className="glass-panel stat-card">
+          <div className="stat-header">
+            <div className="stat-icon"><AlertTriangle size={24} /></div>
+            <h3>Duvet Days Logged</h3>
+          </div>
+          <div className="stat-value">{duvetDaysCount}</div>
         </div>
       </div>
 
@@ -80,7 +105,7 @@ const StaffDashboard = () => {
         
         <div className="request-card-list">
           {myRequests.length > 0 ? myRequests.map(request => (
-            <div className="request-card" key={request.id}>
+            <div className="request-card" key={request._id}>
               <div className="request-card-header">
                 <div>
                   <strong>Date</strong>
@@ -109,6 +134,35 @@ const StaffDashboard = () => {
         </div>
       </div>
 
+      <div className="glass-panel" style={{ marginTop: '1rem' }}>
+        <h3 style={{ marginBottom: '1.5rem' }}>My Duvet Days</h3>
+        <div className="request-card-list">
+          {duvetLogs && duvetLogs.length > 0 ? duvetLogs.map(log => (
+            <div className="request-card" key={log._id}>
+              <div className="request-card-header">
+                <div>
+                  <strong>Date</strong>
+                  <p>{log.date}</p>
+                </div>
+                <span className={`badge badge-pending`}>
+                  Logged
+                </span>
+              </div>
+              <div className="request-card-body">
+                <div className="request-card-field">
+                  <span>Note</span>
+                  <p>{log.note || '-'}</p>
+                </div>
+              </div>
+            </div>
+          )) : (
+            <div className="request-card empty-card">
+              No duvet days logged.
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Leave Request Modal */}
       <div className={`modal-overlay ${isModalOpen ? 'active' : ''}`}>
         <div className="modal">
@@ -117,7 +171,7 @@ const StaffDashboard = () => {
             <button className="close-btn" onClick={() => setIsModalOpen(false)}>&times;</button>
           </div>
           
-          <form onSubmit={handleRequestLeave}>
+          <form onSubmit={handleRequestLeave} className="stacked-form">
             <div className="form-group">
               <label className="form-label">Select Date</label>
               <input
@@ -140,6 +194,18 @@ const StaffDashboard = () => {
                 <option value="Regular">Regular Leave</option>
                 <option value="Duvet Day">Duvet Day</option>
               </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Number of Days</label>
+              <input
+                type="number"
+                className="form-control"
+                value={leaveDays}
+                onChange={(e) => setLeaveDays(e.target.value)}
+                min="1"
+                max="30"
+                required
+              />
             </div>
             <div className="form-group">
               <label className="form-label">Note to Admin / Reason</label>

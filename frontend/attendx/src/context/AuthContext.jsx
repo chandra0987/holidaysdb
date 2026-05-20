@@ -13,6 +13,8 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => localStorage.getItem('attendx_token') || null);
   const [users, setUsers] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
+  const [duvetLogs, setDuvetLogs] = useState([]);
+  const [holidayPayouts, setHolidayPayouts] = useState([]);
 
   const authHeaders = () => ({
     'Content-Type': 'application/json',
@@ -81,6 +83,48 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const fetchStaffLeaveRequests = async () => {
+    if (!token) return;
+    try {
+      const response = await fetch(`${API_URL}/api/staff/holiday-requests`, {
+        headers: authHeaders()
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      setLeaveRequests(data.data || []);
+    } catch (error) {
+      console.error('Fetch staff leave requests error:', error);
+    }
+  };
+
+  const fetchDuvetLogs = async () => {
+    if (!token) return;
+    try {
+      const response = await fetch(`${API_URL}/api/staff/duvet-logs`, {
+        headers: authHeaders()
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      setDuvetLogs(data.data || []);
+    } catch (error) {
+      console.error('Fetch duvet logs error:', error);
+    }
+  };
+
+  const fetchHolidayPayouts = async () => {
+    if (!token) return;
+    try {
+      const response = await fetch(`${API_URL}/api/admin/holiday-payouts`, {
+        headers: authHeaders()
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      setHolidayPayouts(data.data || []);
+    } catch (error) {
+      console.error('Fetch holiday payouts error:', error);
+    }
+  };
+
   const createStaff = async (staffData) => {
     if (!token) {
       console.error('Create staff failed: no auth token');
@@ -120,37 +164,87 @@ export const AuthProvider = ({ children }) => {
   }, [user, token]);
 
   useEffect(() => {
-    if (token && user?.role === 'admin') {
-      fetchUsers();
-      fetchLeaveRequests();
+    if (token && user) {
+      if (user.role === 'admin') {
+        fetchUsers();
+        fetchLeaveRequests();
+        fetchHolidayPayouts();
+      } else if (user.role === 'staff') {
+        fetchStaffLeaveRequests();
+        fetchDuvetLogs();
+        fetchHolidayPayouts();
+      }
     }
   }, [token, user]);
 
-  const requestLeave = (requestData) => {
+  const updatePayoutStatus = (payoutId, status, payoutAmount, notes) => {
+    setHolidayPayouts(holidayPayouts.map(payout => 
+      payout._id === payoutId ? { ...payout, status, payoutAmount, notes } : payout
+    ));
+
+    // Call backend to persist changes
+    fetch(`${API_URL}/api/admin/holiday-payouts/update-status`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ payoutId, status, payoutAmount, notes })
+    }).catch(err => console.error('Update payout status error:', err));
+  };
+
+  const requestLeave = async (requestData) => {
+    // If duvet day, call duvet-day endpoint which immediately logs the duvet day
+    if (requestData.type === 'Duvet Day') {
+      try {
+        const response = await fetch(`${API_URL}/api/staff/duvet-day`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ date: requestData.date, note: requestData.reason })
+        });
+        if (response.ok) {
+          // refresh lists
+          await fetchDuvetLogs();
+          await fetchStaffLeaveRequests();
+        }
+      } catch (err) {
+        console.error('Duvet day error:', err);
+      }
+      return;
+    }
+
+    // Regular leave -> create holiday request
     const newRequest = {
       ...requestData,
-      id: leaveRequests.length + 1,
+      _id: leaveRequests.length + 1,
       staffId: user.id,
       staffName: user.name,
       status: 'pending'
     };
     setLeaveRequests([...leaveRequests, newRequest]);
+
+    // Send to backend
+    fetch(`${API_URL}/api/staff/holiday-request`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        days: requestData.days || 1,
+        targetMonth: requestData.targetMonth || new Date().toISOString().split('T')[0],
+        date: requestData.date,
+        type: requestData.type,
+        reason: requestData.reason
+      })
+    }).catch(err => console.error('Holiday request error:', err));
   };
 
   const updateLeaveStatus = (requestId, status) => {
     setLeaveRequests(leaveRequests.map(req => 
-      req.id === requestId ? { ...req, status } : req
+      req._id === requestId ? { ...req, status } : req
     ));
 
-    // If approved, update staff leave days
-    if (status === 'approved') {
-      const request = leaveRequests.find(r => r.id === requestId);
-      if (request) {
-        setUsers(users.map(u => 
-          u.id === request.staffId ? { ...u, leaveDays: u.leaveDays + 1 } : u
-        ));
-      }
-    }
+    // Call backend to persist ALL status changes
+    fetch(`${API_URL}/api/admin/holiday-requests/update-status`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ requestId, status })
+    }).catch(err => console.error('Update status error:', err));
   };
 
   return (
@@ -159,11 +253,16 @@ export const AuthProvider = ({ children }) => {
       token,
       users,
       leaveRequests,
+      holidayPayouts,
       login,
       logout,
       createStaff,
       requestLeave,
-      updateLeaveStatus
+      updateLeaveStatus,
+      updatePayoutStatus
+      ,
+      duvetLogs,
+      fetchDuvetLogs
     }}>
       {children}
     </AuthContext.Provider>

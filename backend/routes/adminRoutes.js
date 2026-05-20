@@ -1,4 +1,5 @@
 const express = require("express");
+const HolidayPayout = require("../models/HolidayPayout");
 
 const router = express.Router();
 
@@ -10,6 +11,7 @@ const {
   createAdminPublic,
   adminExists,
   getHolidayRequests,
+  updateHolidayRequestStatus,
   getDuvetLogs,
   exportPayrollCSV
 } = require("../controllers/adminController");
@@ -61,6 +63,13 @@ router.get(
   getHolidayRequests
 );
 
+// UPDATE HOLIDAY REQUEST STATUS
+router.post(
+  "/holiday-requests/update-status",
+  auth,
+  updateHolidayRequestStatus
+);
+
 // GET DUVET DAY LOGS
 router.get(
   "/duvet-logs",
@@ -73,6 +82,67 @@ router.get(
   "/export-csv",
   auth,
   exportPayrollCSV
+);
+
+// GET ALL HOLIDAY PAYOUTS
+router.get(
+  "/holiday-payouts",
+  auth,
+  async (req, res) => {
+    try {
+      const payouts = await HolidayPayout.find();
+      res.status(200).json({
+        success: true,
+        data: payouts
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+);
+
+// UPDATE HOLIDAY PAYOUT STATUS
+router.post(
+  "/holiday-payouts/update-status",
+  auth,
+  async (req, res) => {
+    try {
+      const { payoutId, status, payoutAmount, notes } = req.body;
+
+      if (!['pending', 'approved', 'paid', 'rejected'].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid status'
+        });
+      }
+
+      const payout = await HolidayPayout.findByIdAndUpdate(
+        payoutId,
+        { status, payoutAmount, notes },
+        { new: true }
+      );
+
+      if (!payout) {
+        return res.status(404).json({
+          success: false,
+          message: 'Payout not found'
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: payout
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 );
 
 module.exports = router;

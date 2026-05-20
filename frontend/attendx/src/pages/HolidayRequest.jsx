@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 const HolidayRequest = () => {
+    const { token } = useAuth();
+    const navigate = useNavigate();
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
     const [numberOfDays, setNumberOfDays] = useState(0);
     const [targetMonth, setTargetMonth] = useState(new Date().toISOString().slice(0, 7));
+    const [reason, setReason] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
 
     const calculateDays = (start, end) => {
         if (!start || !end) return 0;
@@ -32,9 +39,45 @@ const HolidayRequest = () => {
         setNumberOfDays(calculateDays(fromDate, e.target.value));
     };
     
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        alert(`Holiday payment request submitted for ${numberOfDays} days in ${targetMonth}.`);
+        setLoading(true);
+        setMessage('');
+
+        try {
+            const response = await fetch('http://localhost:5000/api/staff/holiday-payout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    fromDate,
+                    toDate,
+                    numberOfDays,
+                    targetMonth,
+                    reason
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setMessage('Holiday payout request submitted successfully!');
+                setFromDate('');
+                setToDate('');
+                setNumberOfDays(0);
+                setTargetMonth(new Date().toISOString().slice(0, 7));
+                setReason('');
+                setTimeout(() => navigate('/staff'), 2000);
+            } else {
+                setMessage(data.message || 'Error submitting request');
+            }
+        } catch (error) {
+            setMessage('Network error: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const styles = {
@@ -52,11 +95,17 @@ const HolidayRequest = () => {
         },
         formContainer: {
             width: '100%',
-            maxWidth: '400px',
+            maxWidth: '800px',
             padding: '2rem',
             border: '1px solid #000000',
             borderRadius: '20px',
             boxSizing: 'border-box',
+        },
+        formGrid: {
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '1rem',
+            alignItems: 'start'
         },
         formGroup: {
             marginBottom: '1rem',
@@ -76,6 +125,21 @@ const HolidayRequest = () => {
             color: '#000000',
             fontSize: '1rem',
         },
+        textarea: {
+            width: '100%',
+            padding: '0.5rem 0',
+            boxSizing: 'border-box',
+            border: 'none',
+            borderBottom: '2px solid #000000',
+            borderRadius: '0',
+            backgroundColor: 'transparent',
+            color: '#000000',
+            fontSize: '1.05rem',
+            fontFamily: 'inherit',
+            minHeight: '160px',
+            resize: 'vertical',
+            lineHeight: '1.4'
+        },
         button: {
             width: '100%',
             padding: '0.75rem',
@@ -87,6 +151,8 @@ const HolidayRequest = () => {
             cursor: 'pointer',
             fontSize: '1rem',
             fontWeight: 'bold',
+            opacity: loading ? 0.6 : 1,
+            transition: 'opacity 0.3s',
         },
         calculatedDays: {
             margin: '1rem 0',
@@ -101,6 +167,15 @@ const HolidayRequest = () => {
             marginBottom: '1.5rem',
             fontSize: '1.5rem',
             lineHeight: '1.2',
+        },
+        message: {
+            padding: '0.75rem',
+            marginBottom: '1rem',
+            borderRadius: '10px',
+            textAlign: 'center',
+            fontWeight: '500',
+            backgroundColor: message.includes('Error') || message.includes('Network') ? '#ffe0e0' : '#e0ffe0',
+            color: message.includes('Error') || message.includes('Network') ? '#c00' : '#060',
         }
     };
 
@@ -108,23 +183,39 @@ const HolidayRequest = () => {
         <div style={styles.container}>
             <div style={styles.formContainer}>
                 <h1 style={styles.title}>Holiday Payment Request</h1>
+                {message && <div style={styles.message}>{message}</div>}
                 <form onSubmit={handleSubmit}>
-                    <div style={styles.formGroup}>
-                        <label htmlFor="from-date" style={styles.label}>From Date</label>
-                        <input type="date" id="from-date" value={fromDate} onChange={handleFromDateChange} style={styles.input} />
+                    <div style={styles.formGrid}>
+                      <div style={styles.formGroup}>
+                          <label htmlFor="from-date" style={styles.label}>From Date</label>
+                          <input type="date" id="from-date" value={fromDate} onChange={handleFromDateChange} style={styles.input} required />
+                      </div>
+
+                      <div style={styles.formGroup}>
+                          <label htmlFor="to-date" style={styles.label}>To Date</label>
+                          <input type="date" id="to-date" value={toDate} onChange={handleToDateChange} style={styles.input} required />
+                      </div>
+
+                      <div style={{ ...styles.calculatedDays, gridColumn: '1 / -1' }}>
+                          Number of Days: {numberOfDays}
+                      </div>
+
+                      <div style={styles.formGroup}>
+                          <label htmlFor="target-month" style={styles.label}>Target Month</label>
+                          <input type="month" id="target-month" value={targetMonth} onChange={(e) => setTargetMonth(e.target.value)} style={styles.input} required />
+                      </div>
+
+                      <div style={{ ...styles.formGroup, gridColumn: '1 / -1' }}>
+                          <label htmlFor="reason" style={styles.label}>Reason/Notes (Optional)</label>
+                          <textarea id="reason" value={reason} onChange={(e) => setReason(e.target.value)} style={styles.textarea} placeholder="Enter any additional notes or reason for this request..." />
+                      </div>
+
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <button type="submit" style={styles.button} disabled={loading}>
+                            {loading ? 'Submitting...' : 'Submit'}
+                        </button>
+                      </div>
                     </div>
-                    <div style={styles.formGroup}>
-                        <label htmlFor="to-date" style={styles.label}>To Date</label>
-                        <input type="date" id="to-date" value={toDate} onChange={handleToDateChange} style={styles.input} />
-                    </div>
-                    <div style={styles.calculatedDays}>
-                        Number of Days: {numberOfDays}
-                    </div>
-                    <div style={styles.formGroup}>
-                        <label htmlFor="target-month" style={styles.label}>Target Month</label>
-                        <input type="month" id="target-month" value={targetMonth} onChange={(e) => setTargetMonth(e.target.value)} style={styles.input} />
-                    </div>
-                    <button type="submit" style={styles.button}>Submit</button>
                 </form>
             </div>
         </div>
@@ -132,3 +223,4 @@ const HolidayRequest = () => {
 };
 
 export default HolidayRequest;
+
