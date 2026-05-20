@@ -6,6 +6,7 @@ const router = express.Router();
 const {
   getAllStaff,
   createStaff,
+  createAdmin,
   getHolidayRequests,
   getDuvetLogs,
   exportPayrollCSV
@@ -30,6 +31,13 @@ router.post(
   "/staff",
   auth,
   createStaff
+);
+
+// CREATE ADMIN (only callable by an authenticated admin)
+router.post(
+  "/register",
+  auth,
+  createAdmin
 );
 
 // GET HOLIDAY REQUESTS

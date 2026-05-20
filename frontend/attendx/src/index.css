@@ -291,6 +291,19 @@ textarea.form-control {
   margin-bottom: 3rem;
 }
 
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .auth-tabs {
   display: flex;
   gap: 1rem;

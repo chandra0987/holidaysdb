@@ -214,3 +214,58 @@ exports.exportPayrollCSV =
     }
 
 };
+
+// CREATE ADMIN (only callable by existing admin users)
+exports.createAdmin = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    const {
+      name,
+      email,
+      password,
+      department,
+      serviceYears,
+      holidayEntitlement,
+      carryOver
+    } = req.body;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User already exists'
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      role: 'admin',
+      department,
+      serviceYears,
+      holidayEntitlement: holidayEntitlement ?? 20,
+      carryOver: carryOver ?? 0,
+      daysTaken: 0,
+      duvetDaysUsed: 0
+    });
+
+    res.status(201).json({
+      success: true,
+      user
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
