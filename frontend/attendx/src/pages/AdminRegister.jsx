@@ -69,7 +69,7 @@ const AdminRegister = () => {
         throw new Error(data?.message || 'Unable to create admin account');
       }
 
-      setSuccess('Admin account created successfully. Redirecting to sign in...');
+      setSuccess('Admin account created successfully. Redirecting to admin login...');
       setFormData({
         name: '',
         email: '',
@@ -78,7 +78,7 @@ const AdminRegister = () => {
       });
 
       setTimeout(() => {
-        navigate('/');
+        navigate('/admin-login');
       }, 1400);
     } catch (submissionError) {
       setError(submissionError.message || 'Unable to create admin account');
@@ -127,9 +127,9 @@ const AdminRegister = () => {
             </div>
 
             <div style={{ marginTop: '2rem' }}>
-              <Link to="/" style={{ color: 'var(--primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
+              <Link to="/admin-login" style={{ color: 'var(--primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
                 <ArrowLeft size={16} />
-                Back to sign in
+                Back to admin login
               </Link>
             </div>
           </div>
