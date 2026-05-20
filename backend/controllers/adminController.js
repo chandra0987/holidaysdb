@@ -4,9 +4,10 @@ const DuvetDay = require("../models/Day");
 const HolidayRequest =
   require("../models/HolidayRequest");
 
-const createCsvWriter =
-  require("csv-writer")
-  .createObjectCsvWriter;
+const escapeCsvValue = (value) => {
+  const stringValue = value === null || value === undefined ? "" : String(value);
+  return `"${stringValue.replace(/"/g, '""')}"`;
+};
 
 // GET ALL STAFF
 exports.getAllStaff = async (req, res) => {
@@ -128,6 +129,43 @@ exports.getHolidayRequests =
 
 };
 
+// UPDATE HOLIDAY REQUEST STATUS
+exports.updateHolidayRequestStatus = async (req, res) => {
+  try {
+    const { requestId, status } = req.body;
+
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status'
+      });
+    }
+
+    const request = await HolidayRequest.findByIdAndUpdate(
+      requestId,
+      { status },
+      { new: true }
+    );
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: 'Request not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: request
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // GET DUVET LOGS
 exports.getDuvetLogs = async (req, res) => {
 
@@ -158,17 +196,17 @@ exports.exportPayrollCSV =
 
     try {
 
-      const users = await User.find();
+      const users = await User.find({ role: "staff" });
 
       const records = users.map(user => {
 
         const remainingBalance =
-          user.holidayEntitlement +
-          user.carryOver -
-          user.daysTaken;
+          (user.holidayEntitlement || 0) +
+          (user.carryOver || 0) -
+          (user.daysTaken || 0);
 
         return {
-          employeeIdName: `${user._id} / ${user.name}`,
+          name: user.name,
           monthlyHolidayPaidDaysRequested:
             user.daysTaken,
           duvetDaysTakenInCurrentPayCycle:
@@ -179,34 +217,29 @@ exports.exportPayrollCSV =
 
       });
 
-      const csvWriter =
-        createCsvWriter({
-          path: "payroll.csv",
-          header: [
-            {
-              id: "employeeIdName",
-              title: "Employee ID / Name"
-            },
-            {
-              id: "monthlyHolidayPaidDaysRequested",
-              title: "Monthly Holiday Paid Days Requested"
-            },
-            {
-              id: "duvetDaysTakenInCurrentPayCycle",
-              title: "Duvet Days taken in current pay cycle"
-            },
-            {
-              id: "yearToDateOutstandingBalances",
-              title: "Year-to-date outstanding balances"
-            }
-          ]
-        });
+      const csvLines = [
+        [
+          "Name",
+          "Monthly Holiday Paid Days Requested",
+          "Duvet Days taken in current pay cycle",
+          "Year-to-date outstanding balances"
+        ].map(escapeCsvValue).join(",")
+      ];
 
-      await csvWriter.writeRecords(
-        records
-      );
+      records.forEach((record) => {
+        csvLines.push([
+          record.name,
+          record.monthlyHolidayPaidDaysRequested,
+          record.duvetDaysTakenInCurrentPayCycle,
+          record.yearToDateOutstandingBalances
+        ].map(escapeCsvValue).join(","));
+      });
 
-      res.download("payroll.csv");
+      const fileName = `payroll_export_${new Date().toISOString().split("T")[0]}.csv`;
+
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename=\"${fileName}\"`);
+      res.status(200).send(csvLines.join("\n"));
 
     } catch (error) {
 
@@ -217,4 +250,108 @@ exports.exportPayrollCSV =
 
     }
 
+};
+
+// CREATE ADMIN (only callable by existing admin users)
+exports.createAdmin = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    const {
+      name,
+      email,
+      password,
+      department,
+      serviceYears,
+      holidayEntitlement,
+      carryOver
+    } = req.body;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User already exists'
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      role: 'admin',
+      department,
+      serviceYears,
+      holidayEntitlement: holidayEntitlement ?? 20,
+      carryOver: carryOver ?? 0,
+      daysTaken: 0,
+      duvetDaysUsed: 0
+    });
+
+    res.status(201).json({
+      success: true,
+      user
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// PUBLIC CREATE ADMIN - allows creating multiple admin accounts
+exports.createAdminPublic = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      password,
+      department,
+      serviceYears,
+      holidayEntitlement,
+      carryOver
+    } = req.body;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'User already exists' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      role: 'admin',
+      department,
+      serviceYears,
+      holidayEntitlement: holidayEntitlement ?? 20,
+      carryOver: carryOver ?? 0,
+      daysTaken: 0,
+      duvetDaysUsed: 0
+    });
+
+    res.status(201).json({ success: true, user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// CHECK IF ANY ADMIN EXISTS
+exports.adminExists = async (req, res) => {
+  try {
+    const count = await User.countDocuments({ role: 'admin' });
+    res.status(200).json({ success: true, exists: count > 0 });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
