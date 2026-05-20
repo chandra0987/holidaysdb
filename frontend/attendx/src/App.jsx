@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import StaffDashboard from './pages/StaffDashboard';
+import HolidayRequest from './pages/HolidayRequest';
 import { LogOut, User } from 'lucide-react';
 
 const ProtectedRoute = ({ children, role }) => {
@@ -66,6 +67,14 @@ function App() {
           element={
             <ProtectedRoute role="staff">
               <StaffDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/staff/holiday-request" 
+          element={
+            <ProtectedRoute role="staff">
+              <HolidayRequest />
             </ProtectedRoute>
           } 
         />
