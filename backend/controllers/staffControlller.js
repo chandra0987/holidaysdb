@@ -1,6 +1,3 @@
-const User = require("../models/User");
-const Day = require("../models/Day");
-const HolidayRequest = require("../models/HolidayRequest");
 
 
 exports.getProfile = async (req, res) => {
