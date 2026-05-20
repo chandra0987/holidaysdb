@@ -270,15 +270,9 @@ exports.createAdmin = async (req, res) => {
   }
 };
 
-// PUBLIC CREATE ADMIN - only allowed when no admin exists (first admin bootstrap)
+// PUBLIC CREATE ADMIN - allows creating multiple admin accounts
 exports.createAdminPublic = async (req, res) => {
   try {
-    // Check if any admin already exists
-    const adminCount = await User.countDocuments({ role: 'admin' });
-    if (adminCount > 0) {
-      return res.status(403).json({ success: false, message: 'Admin account already exists' });
-    }
-
     const {
       name,
       email,
