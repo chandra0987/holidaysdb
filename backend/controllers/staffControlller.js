@@ -1,20 +1,24 @@
 const User = require("../models/User");
-const Day = require("../models/Day");
+const DuvetDay = require("../models/Day");
 const HolidayRequest = require("../models/HolidayRequest");
 
+const getBalanceData = (user) => {
+  const holidayEntitlement = user.holidayEntitlement || 0;
+  const carryOver = user.carryOver || 0;
+  const daysTaken = user.daysTaken || 0;
+  const duvetDaysUsed = user.duvetDaysUsed || 0;
+
+  return {
+    remainingBalance: holidayEntitlement + carryOver - daysTaken,
+    duvetRemaining: 8 - duvetDaysUsed
+  };
+};
 
 exports.getProfile = async (req, res) => {
   try {
 
     const user = await User.findById(req.user.id);
-
-    const remainingBalance =
-      user.holidayEntitlement +
-      user.carryOver -
-      user.daysTaken;
-
-    const duvetRemaining =
-      8 - user.duvetDaysUsed;
+    const { remainingBalance, duvetRemaining } = getBalanceData(user);
 
     res.status(200).json({
       success: true,
@@ -88,21 +92,14 @@ exports.createHolidayRequest =
       const { days, targetMonth } =
         req.body;
 
-      const user = await User.findById(
-        req.user.id
-      );
-
-      const remainingBalance =
-        user.holidayEntitlement +
-        user.carryOver -
-        user.daysTaken;
+      const user = await User.findById(req.user.id);
+      const { remainingBalance } = getBalanceData(user);
 
       // VALIDATION
       if (days > remainingBalance) {
         return res.status(400).json({
           success: false,
-          message:
-            "Insufficient holiday balance"
+          message: "Insufficient holiday balance"
         });
       }
 

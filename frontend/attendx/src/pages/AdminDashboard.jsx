@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { Users, UserPlus, CheckCircle, XCircle, Calendar, Download } from 'lucide-react';
+import { Users, UserPlus, CheckCircle, XCircle, Calendar, Download, Search } from 'lucide-react';
 
 const AdminDashboard = () => {
   const { users, leaveRequests, createStaff, updateLeaveStatus } = useAuth();
   const [activeTab, setActiveTab] = useState('staff'); // staff, requests, new-staff
+  const [searchQuery, setSearchQuery] = useState('');
   
   // New staff form state
   const [name, setName] = useState('');
@@ -25,6 +26,24 @@ const AdminDashboard = () => {
   };
 
   const staffMembers = users.filter(u => u.role === 'staff');
+  const filteredStaff = staffMembers.filter(staff =>
+    staff.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    staff.email?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+    staff.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    staff.serviceYears?.toString().includes(searchQuery)
+  );
+
+  const filteredRequests = leaveRequests.filter(request =>
+    request.staffName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    request.reason.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    request.type?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+  };
+
+  const handleClearSearch = () => setSearchQuery('');
 
   const exportToCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
@@ -63,7 +82,7 @@ const AdminDashboard = () => {
       </div>
       
       <div className="dashboard-grid">
-        <div className="glass-panel stat-card">
+        <div className="glass-panel stat-card atm-card">
           <div className="stat-header">
             <div className="stat-icon blue"><Users size={24} /></div>
             <h3>Total Staff</h3>
@@ -71,13 +90,23 @@ const AdminDashboard = () => {
           <div className="stat-value">{staffMembers.length}</div>
         </div>
         
-        <div className="glass-panel stat-card">
+        <div className="glass-panel stat-card atm-card">
           <div className="stat-header">
             <div className="stat-icon orange"><Calendar size={24} /></div>
             <h3>Pending Leaves</h3>
           </div>
           <div className="stat-value">
             {leaveRequests.filter(r => r.status === 'pending').length}
+          </div>
+        </div>
+
+        <div className="glass-panel stat-card atm-card">
+          <div className="stat-header">
+            <div className="stat-icon green"><Users size={24} /></div>
+            <h3>Departments</h3>
+          </div>
+          <div className="stat-value">
+            {Array.from(new Set(staffMembers.map(staff => staff.department || 'Unknown'))).length}
           </div>
         </div>
       </div>
@@ -105,30 +134,79 @@ const AdminDashboard = () => {
           </div>
         </div>
 
+        {(activeTab === 'staff' || activeTab === 'requests') && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+            <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '0.5rem', flex: '1 1 320px' }}>
+              <input
+                type="text"
+                className="form-control"
+                placeholder={activeTab === 'staff' ? 'Search staff by name, department or years' : 'Search requests by name, type or reason'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Search size={16} /> Search
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={handleClearSearch}>
+                Clear
+              </button>
+            </form>
+            <div style={{ minWidth: '180px', textAlign: 'right' }}>
+              {searchQuery && <span style={{ color: 'var(--text-muted)' }}>Filtering for "{searchQuery}"</span>}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'staff' && (
           <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Total Days</th>
-                  <th>Present</th>
-                  <th>Leave Days</th>
-                </tr>
-              </thead>
-              <tbody>
-                {staffMembers.map(staff => (
-                  <tr key={staff.id}>
-                    <td style={{ fontWeight: 500 }}>{staff.name}</td>
-                    <td>{staff.email}</td>
-                    <td>{staff.totalDays}</td>
-                    <td>{staff.presentDays}</td>
-                    <td>{staff.leaveDays}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="staff-cards">
+  {filteredStaff.map((staff) => (
+    <div className="staff-card" key={staff.id}>
+      <div className="card-header">
+        <h3>{staff.name}</h3>
+        <span>{staff.department || "-"}</span>
+      </div>
+
+      <div className="card-body">
+        <div className="card-item">
+          <p>Service Years</p>
+          <h4>{staff.serviceYears ?? "-"}</h4>
+        </div>
+
+        <div className="card-item">
+          <p>Holiday Entitlement</p>
+          <h4>{staff.holidayEntitlement ?? "-"}</h4>
+        </div>
+
+        <div className="card-item">
+          <p>Carry Over</p>
+          <h4>{staff.carryOver ?? "-"}</h4>
+        </div>
+
+        <div className="card-item">
+          <p>Days Taken</p>
+          <h4>{staff.daysTaken ?? 0}</h4>
+        </div>
+
+        <div className="card-item">
+          <p>Remaining Balance</p>
+          <h4>{staff.remainingBalance ?? "-"}</h4>
+        </div>
+
+        <div className="card-item">
+          <p>Duvet Remaining</p>
+          <h4>{staff.duvetRemaining ?? "-"}</h4>
+        </div>
+      </div>
+    </div>
+  ))}
+
+  {filteredStaff.length === 0 && (
+    <div className="no-data">
+      No staff members match your search.
+    </div>
+  )}
+</div>
           </div>
         )}
 
@@ -146,7 +224,7 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {leaveRequests.map(request => (
+                {filteredRequests.map(request => (
                   <tr key={request.id}>
                     <td style={{ fontWeight: 500 }}>{request.staffName}</td>
                     <td>{request.date}</td>
@@ -179,10 +257,10 @@ const AdminDashboard = () => {
                     </td>
                   </tr>
                 ))}
-                {leaveRequests.length === 0 && (
+                {filteredRequests.length === 0 && (
                   <tr>
-                    <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>
-                      No leave requests found
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                      No leave requests match your search.
                     </td>
                   </tr>
                 )}
