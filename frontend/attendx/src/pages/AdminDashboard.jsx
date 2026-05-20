@@ -26,13 +26,28 @@ const AdminDashboard = () => {
 
   const staffMembers = users.filter(u => u.role === 'staff');
 
+  const csvValue = (value) => {
+    const text = `${value ?? ''}`;
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+
   const exportToCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
     
     if (activeTab === 'staff') {
-      csvContent += "Name,Email,Total Days,Present Days,Leave Days\n";
+      csvContent += "Employee ID / Name,Monthly Holiday Paid Days Requested,Duvet Days taken in current pay cycle,Year-to-date outstanding balances\n";
       staffMembers.forEach(staff => {
-        csvContent += `${staff.name},${staff.email},${staff.totalDays},${staff.presentDays},${staff.leaveDays}\n`;
+        const yearToDateBalance =
+          (staff.holidayEntitlement ?? 0) +
+          (staff.carryOver ?? 0) -
+          (staff.daysTaken ?? 0);
+
+        csvContent += [
+          csvValue(`${staff.id || staff._id || ''} / ${staff.name || ''}`),
+          csvValue(staff.leaveDays ?? staff.daysTaken ?? 0),
+          csvValue(staff.duvetDaysUsed ?? 0),
+          csvValue(staff.remainingBalance ?? yearToDateBalance)
+        ].join(',') + '\n';
       });
     } else if (activeTab === 'requests') {
       csvContent += "Staff Name,Date,Type,Reason,Status\n";
@@ -110,21 +125,19 @@ const AdminDashboard = () => {
             <table>
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Total Days</th>
-                  <th>Present</th>
-                  <th>Leave Days</th>
+                  <th>Employee ID / Name</th>
+                  <th>Monthly Holiday Paid Days Requested</th>
+                  <th>Duvet Days taken in current pay cycle</th>
+                  <th>Year-to-date outstanding balances</th>
                 </tr>
               </thead>
               <tbody>
                 {staffMembers.map(staff => (
                   <tr key={staff.id}>
-                    <td style={{ fontWeight: 500 }}>{staff.name}</td>
-                    <td>{staff.email}</td>
-                    <td>{staff.totalDays}</td>
-                    <td>{staff.presentDays}</td>
-                    <td>{staff.leaveDays}</td>
+                    <td style={{ fontWeight: 500 }}>{`${staff.id || staff._id || ''} / ${staff.name || ''}`}</td>
+                    <td>{staff.leaveDays ?? staff.daysTaken ?? 0}</td>
+                    <td>{staff.duvetDaysUsed ?? 0}</td>
+                    <td>{staff.remainingBalance ?? ((staff.holidayEntitlement ?? 0) + (staff.carryOver ?? 0) - (staff.daysTaken ?? 0))}</td>
                   </tr>
                 ))}
               </tbody>

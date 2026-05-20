@@ -168,11 +168,13 @@ exports.exportPayrollCSV =
           user.daysTaken;
 
         return {
-          name: user.name,
-          holidayBalance:
-            remainingBalance,
-          duvetDaysUsed:
-            user.duvetDaysUsed
+          employeeIdName: `${user._id} / ${user.name}`,
+          monthlyHolidayPaidDaysRequested:
+            user.daysTaken,
+          duvetDaysTakenInCurrentPayCycle:
+            user.duvetDaysUsed,
+          yearToDateOutstandingBalances:
+            remainingBalance
         };
 
       });
@@ -182,16 +184,20 @@ exports.exportPayrollCSV =
           path: "payroll.csv",
           header: [
             {
-              id: "name",
-              title: "NAME"
+              id: "employeeIdName",
+              title: "Employee ID / Name"
             },
             {
-              id: "holidayBalance",
-              title: "HOLIDAY_BALANCE"
+              id: "monthlyHolidayPaidDaysRequested",
+              title: "Monthly Holiday Paid Days Requested"
             },
             {
-              id: "duvetDaysUsed",
-              title: "DUVET_DAYS_USED"
+              id: "duvetDaysTakenInCurrentPayCycle",
+              title: "Duvet Days taken in current pay cycle"
+            },
+            {
+              id: "yearToDateOutstandingBalances",
+              title: "Year-to-date outstanding balances"
             }
           ]
         });
