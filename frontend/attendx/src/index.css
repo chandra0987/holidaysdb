@@ -347,6 +347,67 @@ textarea.form-control {
   overflow-x: auto;
 }
 
+.request-card-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.request-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 1.5rem;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+}
+
+.request-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.request-card-header strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.request-card-header p,
+.request-card-field p {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-main);
+}
+
+.request-card-body {
+  display: grid;
+  gap: 1rem;
+}
+
+.request-card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.request-card-field span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.empty-card {
+  border-style: dashed;
+  text-align: center;
+  color: var(--text-muted);
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
