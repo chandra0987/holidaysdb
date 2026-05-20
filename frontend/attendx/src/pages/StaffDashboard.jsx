@@ -71,38 +71,34 @@ const StaffDashboard = () => {
       <div className="glass-panel">
         <h3 style={{ marginBottom: '1.5rem' }}>My Leave Requests</h3>
         
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Reason</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {myRequests.map(request => (
-                <tr key={request.id}>
-                  <td style={{ fontWeight: 500 }}>{request.date}</td>
-                  <td>{request.type || 'Regular'}</td>
-                  <td>{request.reason}</td>
-                  <td>
-                    <span className={`badge badge-${request.status}`}>
-                      {request.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {myRequests.length === 0 && (
-                <tr>
-                  <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                    You haven't made any leave requests yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="request-card-list">
+          {myRequests.length > 0 ? myRequests.map(request => (
+            <div className="request-card" key={request.id}>
+              <div className="request-card-header">
+                <div>
+                  <strong>Date</strong>
+                  <p>{request.date}</p>
+                </div>
+                <span className={`badge badge-${request.status}`}>
+                  {request.status}
+                </span>
+              </div>
+              <div className="request-card-body">
+                <div className="request-card-field">
+                  <span>Type</span>
+                  <p>{request.type || 'Regular'}</p>
+                </div>
+                <div className="request-card-field">
+                  <span>Reason</span>
+                  <p>{request.reason}</p>
+                </div>
+              </div>
+            </div>
+          )) : (
+            <div className="request-card empty-card">
+              You haven't made any leave requests yet.
+            </div>
+          )}
         </div>
       </div>
 

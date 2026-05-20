@@ -49,9 +49,19 @@ const AdminDashboard = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
     
     if (activeTab === 'staff') {
-      csvContent += "Name,Email,Total Days,Present Days,Leave Days\n";
+      csvContent += "Employee ID / Name,Monthly Holiday Paid Days Requested,Duvet Days taken in current pay cycle,Year-to-date outstanding balances\n";
       staffMembers.forEach(staff => {
-        csvContent += `${staff.name},${staff.email},${staff.totalDays},${staff.presentDays},${staff.leaveDays}\n`;
+        const yearToDateBalance =
+          (staff.holidayEntitlement ?? 0) +
+          (staff.carryOver ?? 0) -
+          (staff.daysTaken ?? 0);
+
+        csvContent += [
+          csvValue(`${staff.id || staff._id || ''} / ${staff.name || ''}`),
+          csvValue(staff.leaveDays ?? staff.daysTaken ?? 0),
+          csvValue(staff.duvetDaysUsed ?? 0),
+          csvValue(staff.remainingBalance ?? yearToDateBalance)
+        ].join(',') + '\n';
       });
     } else if (activeTab === 'requests') {
       csvContent += "Staff Name,Date,Type,Reason,Status\n";
