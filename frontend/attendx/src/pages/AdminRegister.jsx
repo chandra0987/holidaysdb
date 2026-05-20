@@ -131,6 +131,9 @@ const AdminRegister = () => {
                 <ArrowLeft size={16} />
                 Back to admin login
               </Link>
+              <div style={{ marginTop: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                or <Link to="/admin-login" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>sign in</Link> if you already have an account
+              </div>
             </div>
           </div>
 
