@@ -3,9 +3,10 @@ import { useAuth } from '../hooks/useAuth';
 import { Users, UserPlus, CheckCircle, XCircle, Calendar, Download, Search } from 'lucide-react';
 
 const AdminDashboard = () => {
-  const { users, leaveRequests, createStaff, updateLeaveStatus } = useAuth();
+  const { users, leaveRequests, createStaff, updateLeaveStatus, token } = useAuth();
   const [activeTab, setActiveTab] = useState('staff'); // staff, requests, new-staff
   const [searchQuery, setSearchQuery] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
   
   // New staff form state
   const [name, setName] = useState('');
@@ -45,31 +46,43 @@ const AdminDashboard = () => {
 
   const handleClearSearch = () => setSearchQuery('');
 
-  const exportToCSV = () => {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    
+  const exportToCSV = async () => {
     if (activeTab === 'staff') {
-      csvContent += "Employee ID / Name,Monthly Holiday Paid Days Requested,Duvet Days taken in current pay cycle,Year-to-date outstanding balances\n";
-      staffMembers.forEach(staff => {
-        const yearToDateBalance =
-          (staff.holidayEntitlement ?? 0) +
-          (staff.carryOver ?? 0) -
-          (staff.daysTaken ?? 0);
+      setIsExporting(true);
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/export-csv`, {
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          }
+        });
 
-        csvContent += [
-          csvValue(`${staff.id || staff._id || ''} / ${staff.name || ''}`),
-          csvValue(staff.leaveDays ?? staff.daysTaken ?? 0),
-          csvValue(staff.duvetDaysUsed ?? 0),
-          csvValue(staff.remainingBalance ?? yearToDateBalance)
-        ].join(',') + '\n';
-      });
-    } else if (activeTab === 'requests') {
-      csvContent += "Staff Name,Date,Type,Reason,Status\n";
-      leaveRequests.forEach(req => {
-        const reason = req.reason.replace(/,/g, " "); // prevent comma collision
-        csvContent += `${req.staffName},${req.date},${req.type || 'Regular'},${reason},${req.status}\n`;
-      });
+        if (!response.ok) {
+          throw new Error('Unable to export CSV');
+        }
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `staff_export_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+      } catch (error) {
+        alert(error.message || 'Failed to export CSV');
+      } finally {
+        setIsExporting(false);
+      }
+      return;
     }
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Staff Name,Date,Type,Reason,Status\n";
+    leaveRequests.forEach(req => {
+      const reason = req.reason.replace(/,/g, " "); // prevent comma collision
+      csvContent += `${req.staffName},${req.date},${req.type || 'Regular'},${reason},${req.status}\n`;
+    });
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -85,8 +98,8 @@ const AdminDashboard = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2>Admin Dashboard</h2>
         {(activeTab === 'staff' || activeTab === 'requests') && (
-          <button className="btn btn-secondary" onClick={exportToCSV}>
-            <Download size={18} /> Export CSV
+          <button className="btn btn-secondary" onClick={exportToCSV} disabled={isExporting}>
+            <Download size={18} /> {isExporting ? 'Exporting...' : 'Export CSV'}
           </button>
         )}
       </div>
