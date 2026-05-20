@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const upload = require('../middleware/upload');
-const { uploadStaffLeaveData, getAllStaffLeaveData } = require('../controllers/staffController');
+const { uploadStaffLeaveData, getAllStaffLeaveData } = require('../controllers/staffControllerv1');
 
 // POST /api/staff/upload  — accepts a single Excel file in form field "file"
 router.post(
