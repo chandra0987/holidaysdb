@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { Users, UserPlus, CheckCircle, XCircle, Calendar, Download, Search } from 'lucide-react';
+import { Users, UserPlus, CheckCircle, XCircle, Calendar, Download, Search, Upload } from 'lucide-react';
 
 const AdminDashboard = () => {
   const { users, leaveRequests, holidayPayouts, createStaff, updateLeaveStatus, updatePayoutStatus, token, duvetLogs } = useAuth();
@@ -8,11 +8,47 @@ const AdminDashboard = () => {
   const [payoutModal, setPayoutModal] = useState({ show: false, payoutId: '', status: '', amount: '', notes: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
   
   // New staff form state
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  // Imported staff data state
+  const [importedStaff, setImportedStaff] = useState([]);
+  const [isLoadingImported, setIsLoadingImported] = useState(false);
+
+  // Fetch imported staff data
+  useEffect(() => {
+    if (activeTab === 'imported-staff') {
+      fetchImportedStaff();
+    }
+  }, [activeTab]);
+
+  const fetchImportedStaff = async () => {
+    setIsLoadingImported(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/staff`,
+        {
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setImportedStaff(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching imported staff:', error);
+    } finally {
+      setIsLoadingImported(false);
+    }
+  };
 
   const handleCreateStaff = async (e) => {
     e.preventDefault();
@@ -138,14 +174,92 @@ const AdminDashboard = () => {
     document.body.removeChild(link);
   };
 
+  const handleImportStaff = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'application/octet-stream'
+    ];
+    const validExtensions = ['.xlsx', '.xls'];
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+    if (!validExtensions.includes(ext) || !validTypes.includes(file.type)) {
+      alert('Please upload a valid Excel file (.xlsx or .xls)');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/staff/upload`,
+        {
+          method: 'POST',
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: formData
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to upload file');
+      }
+
+      alert(` File uploaded successfully!\n\nRecords processed: ${data.stats.totalRows}\nInserted: ${data.stats.inserted}\nUpdated: ${data.stats.updated}`);
+      
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      
+      // Fetch and display the imported data
+      setActiveTab('imported-staff');
+      await fetchImportedStaff();
+    } catch (error) {
+      alert(` Upload failed: ${error.message}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="container fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', gap: '1rem', flexWrap: 'wrap' }}>
         <h2>Admin Dashboard</h2>
-        {(activeTab === 'staff' || activeTab === 'requests' || activeTab === 'payouts') && (
-          <button className="btn btn-secondary" onClick={exportToCSV} disabled={isExporting}>
-            <Download size={18} /> {isExporting ? 'Exporting...' : 'Export CSV'}
-          </button>
+        {(activeTab === 'staff' || activeTab === 'requests' || activeTab === 'payouts' || activeTab === 'imported-staff') && (
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {activeTab === 'staff' && (
+              <>
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => fileInputRef.current?.click()} 
+                  disabled={isUploading}
+                >
+                  <Upload size={18} /> {isUploading ? 'Importing...' : 'Import Staff'}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleImportStaff}
+                  style={{ display: 'none' }}
+                  disabled={isUploading}
+                />
+              </>
+            )}
+            <button className="btn btn-secondary" onClick={exportToCSV} disabled={isExporting}>
+              <Download size={18} /> {isExporting ? 'Exporting...' : 'Export CSV'}
+            </button>
+          </div>
         )}
       </div>
       
@@ -216,15 +330,21 @@ const AdminDashboard = () => {
             <UserPlus size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'text-bottom' }} />
             Add Staff
           </div>
+          <div 
+            className={`auth-tab ${activeTab === 'imported-staff' ? 'active' : ''}`}
+            onClick={() => setActiveTab('imported-staff')}
+          >
+            Imported Data
+          </div>
         </div>
 
-        {(activeTab === 'staff' || activeTab === 'requests' || activeTab === 'payouts') && (
+        {(activeTab === 'staff' || activeTab === 'requests' || activeTab === 'payouts' || activeTab === 'imported-staff') && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
             <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '0.5rem', flex: '1 1 320px' }}>
               <input
                 type="text"
                 className="form-control"
-                placeholder={activeTab === 'staff' ? 'Search staff by name, department or years' : activeTab === 'payouts' ? 'Search payouts by staff name or month' : 'Search requests by name, type or reason'}
+                placeholder={activeTab === 'staff' ? 'Search staff by name, department or years' : activeTab === 'payouts' ? 'Search payouts by staff name or month' : activeTab === 'imported-staff' ? 'Search imported staff by name' : 'Search requests by name, type or reason'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -502,6 +622,70 @@ const AdminDashboard = () => {
                 Create Staff Account
               </button>
             </form>
+          </div>
+        )}
+        {activeTab === 'imported-staff' && (
+          <div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3 style={{ marginBottom: '1rem' }}>Imported Staff Data from Excel</h3>
+              {isLoadingImported ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  Loading imported staff data...
+                </div>
+              ) : importedStaff.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  No imported staff data yet. Upload an Excel file to see the data here.
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid var(--border-color)', backgroundColor: 'rgba(100, 150, 255, 0.1)' }}>
+                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Staff Name</th>
+                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Holiday Entitlement Days</th>
+                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Service Years</th>
+                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Carry Over Days</th>
+                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Duvet Days Used</th>
+                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Last Updated</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importedStaff.map((staff, index) => (
+                        <tr 
+                          key={staff._id || index} 
+                          style={{ 
+                            borderBottom: '1px solid var(--border-color)',
+                            backgroundColor: index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'transparent'
+                          }}
+                        >
+                          <td style={{ padding: '1rem' }}>
+                            <strong>{staff.staffName || '-'}</strong>
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            {staff.holidayEntitlementDays !== undefined ? staff.holidayEntitlementDays : '-'}
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            {staff.serviceYears !== undefined ? staff.serviceYears : '-'}
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            {staff.carryOverDays !== undefined ? staff.carryOverDays : '-'}
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            {staff.duvetDaysUsed !== undefined ? staff.duvetDaysUsed : '-'}
+                          </td>
+                          <td style={{ padding: '1rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                            {staff.updatedAt ? new Date(staff.updatedAt).toLocaleDateString() : 'N/A'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(100, 150, 255, 0.1)', borderRadius: 'var(--radius-sm)' }}>
+                    <strong>Total Records:</strong> {importedStaff.length}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

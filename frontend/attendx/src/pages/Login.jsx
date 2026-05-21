@@ -12,7 +12,11 @@ const Login = () => {
 
   useEffect(() => {
     if (user) {
-      navigate(user.role === 'admin' ? '/admin' : '/staff');
+      if (user.role === 'staff') {
+        navigate('/staff');
+      } else {
+        setError('Only staff members can access this page');
+      }
     }
   }, [user, navigate]);
 

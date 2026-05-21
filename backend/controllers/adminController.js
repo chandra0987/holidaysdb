@@ -140,7 +140,7 @@ exports.updateHolidayRequestStatus = async (req, res) => {
     const request = await HolidayRequest.findByIdAndUpdate(
       requestId,
       { status },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!request) {
