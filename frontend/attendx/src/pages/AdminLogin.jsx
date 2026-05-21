@@ -7,7 +7,7 @@ const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login, user } = useAuth();
+  const { login, user, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -16,7 +16,7 @@ const AdminLogin = () => {
         navigate('/admin');
       } else {
         // Non-admin tried to login here
-        setError('Only admin accounts can sign in here');
+        setError('Only admins can sign in here');
       }
     }
   }, [user, navigate]);
@@ -35,6 +35,21 @@ const AdminLogin = () => {
       setError('Invalid credentials');
       return;
     }
+
+    // Immediately check the stored user role (login may update context asynchronously)
+    try {
+      const stored = localStorage.getItem('attendx_user');
+      const parsed = stored ? JSON.parse(stored) : null;
+      if (parsed && parsed.role === 'admin') {
+        navigate('/admin');
+      } else {
+        // If a non-admin accidentally logged in via admin form, log them out and show error
+        logout();
+        setError('Only admins can sign in here');
+      }
+    } catch (err) {
+      console.error('Post-login role check failed', err);
+    }
   };
 
   return (
@@ -46,7 +61,7 @@ const AdminLogin = () => {
               <ShieldCheck size={32} color="var(--primary)" />
               <span>Admin Access</span>
             </div>
-            <p>Sign in to admin dashboard</p>
+            <p>Only admin credentials can be used here. Staff should use the staff login page.</p>
           </div>
 
           {error && (
@@ -88,13 +103,13 @@ const AdminLogin = () => {
             </div>
             
             <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
-              <LogIn size={20} /> Sign In as Admin
+              <LogIn size={20} /> Sign In with Admin Credentials
             </button>
 
             <div style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.875rem' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Not an admin? </span>
+              <span style={{ color: 'var(--text-muted)' }}>Need staff access? </span>
               <Link to="/" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>
-                Staff login
+                Go to staff login page
               </Link>
             </div>
             

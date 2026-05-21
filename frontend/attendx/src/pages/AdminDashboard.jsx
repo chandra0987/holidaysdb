@@ -185,12 +185,35 @@ const AdminDashboard = () => {
     payout.targetMonth.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
+  const filteredImportedStaff = (importedStaff || []).filter(staff =>
+    `${staff.staffName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    `${staff.holidayEntitlementDays || ''}`.toString().includes(searchQuery) ||
+    `${staff.serviceYears || ''}`.toString().includes(searchQuery)
+  );
+
   const handleSearchSubmit = (e) => {
     e.preventDefault();
 
+    // Normalize the query and trigger any tab-specific actions
+    const q = (searchQuery || '').toString().trim();
+    setSearchQuery(q);
+
+    // If user is viewing imported data, refetch to ensure latest before filtering
+    if (activeTab === 'imported-staff') {
+      fetchImportedStaff();
+    }
+
+    // For staff/requests/payouts the filtering is client-side (controlled by `searchQuery`),
+    // so updating searchQuery above is sufficient to apply the filter and rerender.
   };
 
-  const handleClearSearch = () => setSearchQuery('');
+  const handleClearSearch = async () => {
+    setSearchQuery('');
+    // If viewing imported staff, refresh the data to show the full unfiltered list
+    if (activeTab === 'imported-staff') {
+      await fetchImportedStaff();
+    }
+  };
 
   const exportToCSV = async () => {
     if (activeTab === 'staff') {
@@ -324,8 +347,7 @@ const AdminDashboard = () => {
                   accept=".xlsx,.xls"
                   onChange={handleImportStaff}
                   style={{ display: 'none' }}
-                  disabled={isUploading}
-                />
+             ></input>
               </>
             )}
             <button className="btn btn-secondary" onClick={exportToCSV} disabled={isExporting}>
@@ -436,7 +458,7 @@ const AdminDashboard = () => {
         {activeTab === 'staff' && (
 
           <div className="staff-card-grid">
-            {staffMembers.length > 0 ? staffMembers.map(staff => {
+            {filteredStaff.length > 0 ? filteredStaff.map(staff => {
               const remainingBalance = getRemainingBalance(staff);
               const overdue = getOverdue(staff);
               const duvetStats = getDuvetStats(staff);
@@ -747,56 +769,34 @@ const AdminDashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {importedStaff.map((staff, index) => {
-                        const remainingBalance = (staff.holidayEntitlementDays || 28) + (staff.carryOverDays || 0) - (staff.daysTakenSoFar || 0);
-                        return (
-                          <tr 
-                            key={staff._id || index} 
-                            style={{ 
-                              borderBottom: '1px solid var(--border-color)',
-                              backgroundColor: selectedImportedStaff.has(staff._id) ? 'rgba(100, 150, 255, 0.15)' : (index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'transparent')
-                            }}
-                          >
-                            <td style={{ padding: '1rem', textAlign: 'center' }}>
-                              <input 
-                                type="checkbox"
-                                checked={selectedImportedStaff.has(staff._id)}
-                                onChange={() => handleSelectImportedStaff(staff._id)}
-                                style={{ cursor: 'pointer' }}
-                              />
-                            </td>
-                            <td style={{ padding: '1rem' }}>
-                              <strong>{staff.staffName || '-'}</strong>
-                            </td>
-                            <td style={{ padding: '1rem', fontSize: '0.9rem' }}>
-                              {staff.email || '-'}
-                            </td>
-                            <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold', color: '#4CAF50' }}>
-                              {staff.holidayEntitlementDays ?? 28} days
-                            </td>
-                            <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold', color: '#2196F3' }}>
-                              {staff.carryOverDays ?? 0} days
-                            </td>
-                            <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold', color: '#FF9800' }}>
-                              {staff.daysTakenSoFar ?? 0} days
-                            </td>
-                            <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold', color: remainingBalance < 0 ? '#f44336' : '#4CAF50' }}>
-                              {remainingBalance} days
-                            </td>
-                            <td style={{ padding: '1rem', textAlign: 'center' }}>
-                              {staff.serviceYears ?? 0}
-                            </td>
-                            <td style={{ padding: '1rem', textAlign: 'center' }}>
-                              {staff.duvetDaysUsed ?? 0}
-                            </td>
-                            <td style={{ padding: '1rem', textAlign: 'center' }}>
-                              <span className={`badge ${staff.accountCreated ? 'badge-approved' : 'badge-pending'}`}>
-                                {staff.accountCreated ? 'Created' : 'Pending'}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {importedStaff.map((staff, index) => (
+                        <tr 
+                          key={staff._id || index} 
+                          style={{ 
+                            borderBottom: '1px solid var(--border-color)',
+                            backgroundColor: index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'transparent'
+                          }}
+                        >
+                          <td style={{ padding: '1rem' }}>
+                            <strong>{staff.staffName || '-'}</strong>
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            {staff.holidayEntitlementDays !== undefined ? staff.holidayEntitlementDays : '-'}
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            {staff.serviceYears !== undefined ? staff.serviceYears : '-'}
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            {staff.carryOverDays !== undefined ? staff.carryOverDays : '-'}
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            {staff.duvetDaysUsed !== undefined ? staff.duvetDaysUsed : '-'}
+                          </td>
+                          <td style={{ padding: '1rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                            {staff.updatedAt ? new Date(staff.updatedAt).toLocaleDateString() : 'N/A'}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                   <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(100, 150, 255, 0.1)', borderRadius: 'var(--radius-sm)' }}>

@@ -5,6 +5,25 @@ import { useAuth } from '../hooks/useAuth';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+const readResponseBody = async (response) => {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    try {
+      return await response.json();
+    } catch (error) {
+      return {};
+    }
+  }
+
+  try {
+    const text = await response.text();
+    return text ? { message: text } : {};
+  } catch (error) {
+    return {};
+  }
+};
+
 const AdminRegister = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -63,9 +82,10 @@ const AdminRegister = () => {
         })
       });
 
-      const data = await response.json();
+      const data = await readResponseBody(response);
 
       if (!response.ok) {
+        console.error('Admin register failed:', response.status, data);
         throw new Error(data?.message || 'Unable to create admin account');
       }
 

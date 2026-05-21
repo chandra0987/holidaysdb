@@ -87,32 +87,32 @@ A comprehensive leave and holiday management system with duvet-day tracking, adm
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Frontend
-    participant Backend
-    participant Database
-    
-    User->>Frontend: Enter email & password
-    Frontend->>Backend: POST /api/auth/login
-    Backend->>Database: Query user by email
-    Database-->>Backend: User found
-    Backend->>Backend: Verify password hash
-    alt Valid Credentials
-        Backend->>Backend: Generate JWT token
-        Backend-->>Frontend: Return token + user data
-        Frontend->>Frontend: Store token in localStorage
-        Frontend->>User: Redirect to Dashboard
-    else Invalid Credentials
-        Backend-->>Frontend: Return 401 error
-        Frontend->>User: Show "Invalid credentials"
+    participant U as User
+    participant F as Frontend
+    participant B as Backend
+    participant D as Database
+
+    U->>F: Enter email + password
+    F->>B: POST /api/auth/login
+    B->>D: Find user by email
+    D-->>B: User record
+    B->>B: Verify password
+
+    alt Valid credentials
+        B-->>F: Return JWT + user profile
+        F->>F: Save token and user in localStorage
+        F->>F: Route by role
+        alt Admin account
+            F-->>U: Open admin dashboard
+        else Staff account
+            F-->>U: Open staff dashboard
+        end
+    else Invalid credentials
+        B-->>F: Return 401 / 400 error
+        F-->>U: Show login error
     end
-    
-    Note over Frontend: Session Management
-    alt Token Expired (401)
-        Frontend->>Frontend: Detect 401 response
-        Frontend->>Frontend: Clear token & localStorage
-        Frontend->>User: Redirect to Login
-    end
+
+    Note over F: If a 401 is returned later, the app clears session data and redirects to login.
 ```
 
 ---
@@ -121,37 +121,28 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A[Staff Views Dashboard] --> B[Click Request Leave Button]
-    B --> C[Select Request Type]
-    C -->|Holiday| D[Enter Days Needed]
-    C -->|Duvet Day| E[Days Auto-set to 1]
-    D --> F[Select Date Range]
+    A[Staff dashboard] --> B[Open request form]
+    B --> C{Request type}
+    C -->|Holiday| D[Choose dates + number of days]
+    C -->|Duvet day| E[Auto-set to 1 day]
+    D --> F[Add reason or notes]
     E --> F
-    F --> G[Add Reason/Notes]
-    G --> H[Submit Form]
-    
-    H --> I{Backend Validation}
-    I -->|No Auth| J[Return 401]
-    I -->|For Duvet: Check Limit| K{Used < 8 Days?}
-    K -->|No| L[Return 400 - Limit Exceeded]
-    K -->|Yes| M[Create Record]
-    I -->|For Holiday: Valid Data?| N{Data Valid?}
-    N -->|No| O[Return 400 - Invalid Data]
-    N -->|Yes| M
-    
-    J --> P[Frontend Shows Error]
-    L --> P
-    O --> P
-    M --> Q[Save to Database]
-    Q --> R[Return Success]
-    R --> S[Show Toast Notification]
-    S --> T[Update Dashboard Stats]
-    
-    T --> U[Request Appears in Admin Dashboard]
-    U --> V[Admin Reviews Request]
-    V -->|Approve| W[Update Status in DB]
-    V -->|Reject| W
-    W --> X[Staff Sees Updated Status]
+    F --> G[Submit request]
+
+    G --> H{Server checks}
+    H -->|Unauthorized| I[Return 401]
+    H -->|Holiday data invalid| J[Return validation error]
+    H -->|Duvet limit reached| K[Return limit error]
+    H -->|All good| L[Save request]
+
+    I --> M[Show error message]
+    J --> M
+    K --> M
+    L --> N[Show success message]
+    N --> O[Update staff dashboard]
+    O --> P[Admin reviews in dashboard]
+    P --> Q[Approve or reject]
+    Q --> R[Status updated for staff]
 ```
 
 ---
@@ -160,25 +151,19 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Staff Requests Duvet Day] --> B[Backend Receives Request]
-    B --> C[Count Duvet Days for Current Year]
-    C --> D[Query Day Collection]
-    D --> E["Filter: Jan 1 ≤ createdAt < Jan 1 next year"]
-    E --> F[Get Count]
-    
-    F --> G{Count >= 8?}
-    G -->|Yes| H[Return 400 Error]
-    H --> I[Frontend Disables Duvet Option]
-    I --> J[Show 'Limit Exceeded' Message]
-    
-    G -->|No| K[Allow Request]
-    K --> L[Create Day Document]
-    L --> M[Increment duvetDaysUsed]
-    M --> N[Save to Database]
-    N --> O[Return Success]
-    
-    P["Annual Reset: Jan 1"] -->|New Year| Q[Count Resets to 0]
-    Q --> R[No Manual Action Needed]
+    A[Staff requests duvet day] --> B[Backend counts current-year logs]
+    B --> C[Query Day collection]
+    C --> D[Only records from Jan 1 to Dec 31]
+    D --> E{8-day limit reached?}
+
+    E -->|Yes| F[Reject request]
+    F --> G[Show limit exceeded message]
+
+    E -->|No| H[Create Day document]
+    H --> I[Update duvetDaysUsed]
+    I --> J[Return success]
+
+    K[New calendar year] --> L[Count resets to 0]
 ```
 
 ---
@@ -187,27 +172,25 @@ flowchart TD
 
 ```mermaid
 graph TD
-    A["Admin Dashboard<br/>(Multiple Tabs)"]
-    
-    A --> B["📋 Tab 1: Staff List"]
-    B --> B1["View All Staff Members"]
-    B1 --> B2["Display: Name, Email, Role<br/>Duvet Stats: Used/Remaining"]
-    B2 --> B3["Actions: Edit, Delete, View Details<br/>Button: Add New Staff"]
-    
-    A --> C["📝 Tab 2: Leave Requests"]
-    C --> C1["Combined Request List"]
-    C1 --> C2["Holiday Requests"]
-    C1 --> C3["Duvet Logs"]
-    C2 --> C2a["Status: Pending, Approved, Rejected<br/>Actions: Approve/Reject Buttons"]
-    C3 --> C3a["Status: Logged Read-Only<br/>No Action Buttons"]
-    
-    A --> D["💰 Tab 3: Holiday Payouts"]
-    D --> D1["View Payout Requests"]
-    D1 --> D2["Status: Pending, Approved, Processed<br/>Actions: Approve/Reject/Process"]
-    
-    A --> E["📊 Tab 4: Reports"]
-    E --> E1["Export Options"]
-    E1 --> E2["Filters: Date Range, Staff Name<br/>Export Format: CSV for Payroll"]
+    A["Admin Dashboard"]
+
+    A --> B["Staff Directory"]
+    B --> B1["View staff names, roles and departments"]
+    B1 --> B2["Add, edit, delete, or import staff"]
+
+    A --> C["Leave Requests"]
+    C --> C1["Holiday requests"]
+    C --> C2["Duvet logs"]
+    C1 --> C1a["Approve or reject"]
+    C2 --> C2a["Read-only log"]
+
+    A --> D["Holiday Payouts"]
+    D --> D1["Review payout requests"]
+    D1 --> D2["Approve, reject, or process"]
+
+    A --> E["Reports"]
+    E --> E1["Export CSV"]
+    E1 --> E2["Filter by date or staff name"]
 ```
 
 ---
@@ -216,42 +199,18 @@ graph TD
 
 ```mermaid
 graph TB
-    User["👤 User<br/>(Staff/Admin)"]
-    Login["🔐 Login Page"]
-    Auth["🔑 AuthContext<br/>JWT + User Info<br/>localStorage: attendx_token"]
-    
-    StaffDash["📊 Staff Dashboard"]
-    AdminDash["📊 Admin Dashboard"]
-    
-    Backend["🖥️ Express Server<br/>Port 5000"]
-    
-    Auth1["POST /api/auth/login<br/>POST /api/auth/register"]
-    Auth2["POST /api/auth/admin-register"]
-    
-    StaffAPI["GET /api/staff/profile<br/>POST /api/staff/duvet-day<br/>POST /api/staff/holiday-request<br/>GET /api/staff/requests"]
-    
-    AdminAPI["GET /api/admin/all-staff<br/>GET /api/admin/requests<br/>PUT /api/admin/requests/:id<br/>GET /api/admin/duvet-logs<br/>GET /api/admin/export-csv<br/>POST/PUT/DELETE /api/admin/staff"]
-    
-    DB["💾 MongoDB<br/>(Collections:<br/>Users, HolidayRequests,<br/>Days, HolidayPayouts)"]
-    
-    User --> Login
-    Login --> Auth
-    Auth --> StaffDash
-    Auth --> AdminDash
-    
-    StaffDash --> StaffAPI
-    AdminDash --> AdminAPI
-    
-    Auth1 --> Backend
-    Auth2 --> Backend
-    StaffAPI --> Backend
-    AdminAPI --> Backend
-    
-    Backend --> DB
-    
-    DB -.->|Query Results| Backend
-    Backend -.->|API Response| StaffDash
-    Backend -.->|API Response| AdminDash
+    U["User"] --> L["Login screen"]
+    L --> A["AuthContext stores token + user"]
+    A --> S["Staff dashboard"]
+    A --> D["Admin dashboard"]
+
+    S --> S1["Staff APIs"]
+    D --> D1["Admin APIs"]
+
+    S1 --> B["Express backend"]
+    D1 --> B
+    B --> M["MongoDB collections"]
+    M --> R["Updated records + API responses"]
 ```
 
 ---

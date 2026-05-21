@@ -2,6 +2,25 @@ import { createContext, useEffect, useState } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+const readResponseBody = async (response) => {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    try {
+      return await response.json();
+    } catch (error) {
+      return {};
+    }
+  }
+
+  try {
+    const text = await response.text();
+    return text ? { message: text } : {};
+  } catch (error) {
+    return {};
+  }
+};
+
 // eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext();
 
@@ -40,9 +59,10 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, password })
       });
 
-      const data = await response.json();
+      const data = await readResponseBody(response);
 
       if (!response.ok) {
+        console.error('Login failed:', response.status, data);
         return false;
       }
 
