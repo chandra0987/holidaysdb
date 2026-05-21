@@ -7,7 +7,7 @@ const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login, user } = useAuth();
+  const { login, user, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,6 +34,21 @@ const AdminLogin = () => {
     if (!success) {
       setError('Invalid credentials');
       return;
+    }
+
+    // Immediately check the stored user role (login may update context asynchronously)
+    try {
+      const stored = localStorage.getItem('attendx_user');
+      const parsed = stored ? JSON.parse(stored) : null;
+      if (parsed && parsed.role === 'admin') {
+        navigate('/admin');
+      } else {
+        // If a non-admin accidentally logged in via admin form, log them out and show error
+        logout();
+        setError('Only admin accounts can sign in here');
+      }
+    } catch (err) {
+      console.error('Post-login role check failed', err);
     }
   };
 

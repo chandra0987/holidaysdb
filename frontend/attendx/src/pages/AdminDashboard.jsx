@@ -116,9 +116,26 @@ const AdminDashboard = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
 
+    // Normalize the query and trigger any tab-specific actions
+    const q = (searchQuery || '').toString().trim();
+    setSearchQuery(q);
+
+    // If user is viewing imported data, refetch to ensure latest before filtering
+    if (activeTab === 'imported-staff') {
+      fetchImportedStaff();
+    }
+
+    // For staff/requests/payouts the filtering is client-side (controlled by `searchQuery`),
+    // so updating searchQuery above is sufficient to apply the filter and rerender.
   };
 
-  const handleClearSearch = () => setSearchQuery('');
+  const handleClearSearch = async () => {
+    setSearchQuery('');
+    // If viewing imported staff, refresh the data to show the full unfiltered list
+    if (activeTab === 'imported-staff') {
+      await fetchImportedStaff();
+    }
+  };
 
   const exportToCSV = async () => {
     if (activeTab === 'staff') {
