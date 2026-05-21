@@ -1,7 +1,10 @@
 const mongoose = require("mongoose");
 
 const DaySchema = new mongoose.Schema({
-  userId: mongoose.Schema.Types.ObjectId,
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  },
   date: Date,
   note: String
 }, { timestamps: true });

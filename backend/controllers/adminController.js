@@ -170,9 +170,14 @@ exports.getDuvetLogs = async (req, res) => {
     const logs = await DuvetDay.find()
       .populate("userId", "name");
 
+    const normalizedLogs = logs.map((log) => ({
+      ...log._doc,
+      staffName: log.userId?.name || log.staffName || "Unknown"
+    }));
+
     res.status(200).json({
       success: true,
-      data: logs
+      data: normalizedLogs
     });
 
   } catch (error) {

@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Users, UserPlus, CheckCircle, XCircle, Calendar, Download, Search } from 'lucide-react';
 
 const AdminDashboard = () => {
-  const { users, leaveRequests, holidayPayouts, createStaff, updateLeaveStatus, updatePayoutStatus, token } = useAuth();
+  const { users, leaveRequests, holidayPayouts, createStaff, updateLeaveStatus, updatePayoutStatus, token, duvetLogs } = useAuth();
   const [activeTab, setActiveTab] = useState('staff'); // staff, requests, payouts, new-staff
   const [payoutModal, setPayoutModal] = useState({ show: false, payoutId: '', status: '', amount: '', notes: '' });
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,15 +44,32 @@ const AdminDashboard = () => {
     return balance < 0 ? Math.abs(balance) : 0;
   };
 
+  const getDuvetStats = (staff) => ({
+    used: staff.duvetDaysUsed ?? 0,
+    remaining: staff.duvetRemaining ?? Math.max(0, 8 - (staff.duvetDaysUsed ?? 0))
+  });
+
   const csvValue = (value) => {
     const text = `${value ?? ''}`;
     return `"${text.replace(/"/g, '""')}"`;
   };
 
-  const filteredRequests = leaveRequests.filter(request =>
-    request.staffName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    request.reason.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    request.type?.toLowerCase().includes(searchQuery.toLowerCase())
+  const duvetRequestRows = (duvetLogs || []).map(log => ({
+    _id: log._id,
+    staffName: log.staffName || log.userId?.name || 'Unknown',
+    date: log.date,
+    type: 'Duvet Day',
+    reason: log.note || '-',
+    status: 'logged',
+    source: 'duvet'
+  }));
+
+  const allRequests = [...leaveRequests, ...duvetRequestRows];
+
+  const filteredRequests = allRequests.filter(request =>
+    `${request.staffName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    `${request.reason || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    `${request.type || ''}`.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredPayouts = holidayPayouts?.filter(payout =>
@@ -230,6 +247,7 @@ const AdminDashboard = () => {
             {staffMembers.length > 0 ? staffMembers.map(staff => {
               const remainingBalance = getRemainingBalance(staff);
               const overdue = getOverdue(staff);
+              const duvetStats = getDuvetStats(staff);
               return (
                 <div className="staff-card" key={staff.id || staff._id}>
                   <div className="staff-card-top">
@@ -256,6 +274,8 @@ const AdminDashboard = () => {
                   <div className="staff-card-meta">
                     <div>{`Entitlement: ${staff.holidayEntitlement ?? 0}`}</div>
                     <div>{`Taken: ${staff.daysTaken ?? 0}`}</div>
+                    <div>{`Duvet Logged: ${duvetStats.used}`}</div>
+                    <div>{`Duvet Remaining: ${duvetStats.remaining}`}</div>
                   </div>
                 </div>
               );
@@ -289,12 +309,12 @@ const AdminDashboard = () => {
                     <td>{request.type || 'Regular'}</td>
                     <td>{request.reason}</td>
                     <td>
-                      <span className={`badge badge-${request.status}`}>
-                        {request.status}
+                      <span className={`badge ${request.source === 'duvet' ? 'badge-approved' : `badge-${request.status}`}`}>
+                        {request.source === 'duvet' ? 'Logged' : request.status}
                       </span>
                     </td>
                     <td>
-                      {request.status === 'pending' && (
+                      {request.source !== 'duvet' && request.status === 'pending' && (
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                           <button 
                             className="btn btn-success" 

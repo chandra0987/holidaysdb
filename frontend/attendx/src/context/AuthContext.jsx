@@ -109,7 +109,8 @@ export const AuthProvider = ({ children }) => {
   const fetchDuvetLogs = async () => {
     if (!token) return;
     try {
-      const response = await fetch(`${API_URL}/api/staff/duvet-logs`, {
+      const endpoint = user?.role === 'admin' ? `${API_URL}/api/admin/duvet-logs` : `${API_URL}/api/staff/duvet-logs`;
+      const response = await fetch(endpoint, {
         headers: authHeaders()
       });
       if (handleUnauthorized(response) || !response.ok) return;
@@ -180,6 +181,7 @@ export const AuthProvider = ({ children }) => {
       if (user.role === 'admin') {
         fetchUsers();
         fetchLeaveRequests();
+        fetchDuvetLogs();
         fetchHolidayPayouts();
       } else if (user.role === 'staff') {
         fetchStaffLeaveRequests();
