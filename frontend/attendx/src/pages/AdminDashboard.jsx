@@ -252,8 +252,7 @@ const AdminDashboard = () => {
                   accept=".xlsx,.xls"
                   onChange={handleImportStaff}
                   style={{ display: 'none' }}
-                  disabled={isUploading}
-                />
+             ></input>
               </>
             )}
             <button className="btn btn-secondary" onClick={exportToCSV} disabled={isExporting}>
