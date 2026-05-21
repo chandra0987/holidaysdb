@@ -199,39 +199,45 @@ export const AuthProvider = ({ children }) => {
           headers: authHeaders(),
           body: JSON.stringify({ date: requestData.date, note: requestData.reason })
         });
+        const data = await response.json().catch(() => ({}));
         if (response.ok) {
           // refresh lists
           await fetchDuvetLogs();
           await fetchStaffLeaveRequests();
+          return { success: true };
         }
+        return { success: false, message: data?.message || data?.msg || 'Duvet day failed' };
       } catch (err) {
         console.error('Duvet day error:', err);
+        return { success: false, message: 'Network or server error' };
       }
-      return;
     }
 
     // Regular leave -> create holiday request
-    const newRequest = {
-      ...requestData,
-      _id: leaveRequests.length + 1,
-      staffId: user.id,
-      staffName: user.name,
-      status: 'pending'
-    };
-    setLeaveRequests([...leaveRequests, newRequest]);
+    try {
+      const response = await fetch(`${API_URL}/api/staff/holiday-request`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          days: requestData.days || 1,
+          targetMonth: requestData.targetMonth || new Date().toISOString().split('T')[0],
+          date: requestData.date,
+          type: requestData.type,
+          reason: requestData.reason
+        })
+      });
 
-    // Send to backend
-    fetch(`${API_URL}/api/staff/holiday-request`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({
-        days: requestData.days || 1,
-        targetMonth: requestData.targetMonth || new Date().toISOString().split('T')[0],
-        date: requestData.date,
-        type: requestData.type,
-        reason: requestData.reason
-      })
-    }).catch(err => console.error('Holiday request error:', err));
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        // refresh staff view
+        await fetchStaffLeaveRequests();
+        return { success: true };
+      }
+      return { success: false, message: data?.message || data?.msg || 'Holiday request failed' };
+    } catch (err) {
+      console.error('Holiday request error:', err);
+      return { success: false, message: 'Network or server error' };
+    }
   };
 
   const updateLeaveStatus = (requestId, status) => {

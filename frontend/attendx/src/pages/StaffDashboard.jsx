@@ -22,7 +22,7 @@ const StaffDashboard = () => {
     setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
   };
 
-  const handleRequestLeave = (e) => {
+  const handleRequestLeave = async (e) => {
     e.preventDefault();
     if (!leaveDate || !leaveReason || !leaveDays) return;
     // enforce duvet day limit
@@ -31,19 +31,24 @@ const StaffDashboard = () => {
       return;
     }
 
-    requestLeave({ 
+    const result = await requestLeave({ 
       date: leaveDate, 
       type: leaveType, 
       reason: leaveReason,
       days: parseInt(leaveDays, 10),
       targetMonth: new Date().toISOString().split('T')[0]
     });
-    setIsModalOpen(false);
-    setLeaveDate('');
-    setLeaveType('Regular');
-    setLeaveReason('');
-    setLeaveDays('1');
-    showToast('Leave request submitted successfully!');
+
+    if (result && result.success) {
+      setIsModalOpen(false);
+      setLeaveDate('');
+      setLeaveType('Regular');
+      setLeaveReason('');
+      setLeaveDays('1');
+      showToast('Leave request submitted successfully!');
+    } else {
+      showToast(result?.message || 'Failed to submit request', 'error');
+    }
   };
 
   const myRequests = leaveRequests.filter(r => r.userId === user._id || r.staffName === user.name);
