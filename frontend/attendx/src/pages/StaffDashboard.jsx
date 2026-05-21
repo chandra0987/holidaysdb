@@ -63,6 +63,12 @@ const StaffDashboard = () => {
   const duvetDaysCount = myDuvetLogs.length;
   const duvetDaysRemaining = Math.max(0, 8 - duvetDaysCount);
 
+  // Holiday entitlement metrics
+  const holidayEntitlement = user.holidayEntitlement || 28;
+  const carryOver = user.carryOver || 0;
+  const daysTaken = user.daysTaken || 0;
+  const remainingBalance = holidayEntitlement + carryOver - daysTaken;
+
   return (
     <div className="container fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', gap: '1rem', flexWrap: 'wrap' }}>
@@ -74,6 +80,44 @@ const StaffDashboard = () => {
           <button className="btn btn-secondary" onClick={() => navigate('/staff/holiday-request')}>
             <Calendar size={18} /> Holiday Payment
           </button>
+        </div>
+      </div>
+
+      <div className="dashboard-grid full-width">
+        <div className="glass-panel stat-card">
+          <div className="stat-header">
+            <div className="stat-icon blue"><Calendar size={24} /></div>
+            <h3>Holiday Entitlement</h3>
+          </div>
+          <div className="stat-value">{holidayEntitlement}</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Base annual allowance</div>
+        </div>
+
+        <div className="glass-panel stat-card">
+          <div className="stat-header">
+            <div className="stat-icon blue"><Calendar size={24} /></div>
+            <h3>Carry Over Days</h3>
+          </div>
+          <div className="stat-value">{carryOver}</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>From prior year</div>
+        </div>
+
+        <div className="glass-panel stat-card">
+          <div className="stat-header">
+            <div className="stat-icon orange"><AlertTriangle size={24} /></div>
+            <h3>Days Taken So Far</h3>
+          </div>
+          <div className="stat-value">{daysTaken}</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Current period</div>
+        </div>
+
+        <div className="glass-panel stat-card">
+          <div className="stat-header">
+            <div className={`stat-icon ${remainingBalance < 0 ? '' : 'green'}`} style={{ backgroundColor: remainingBalance < 0 ? '#f44336' : undefined }}><CheckCircle size={24} /></div>
+            <h3>Remaining Balance</h3>
+          </div>
+          <div className="stat-value" style={{ color: remainingBalance < 0 ? '#f44336' : '#4CAF50' }}>{remainingBalance}</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Dynamically calculated</div>
         </div>
       </div>
 

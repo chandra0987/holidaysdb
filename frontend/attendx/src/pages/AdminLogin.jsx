@@ -67,13 +67,13 @@ const AdminLogin = () => {
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">Email Address</label>
+              <label className="form-label">Email Address or Name</label>
               <input
-                type="email"
+                type="text"
                 className="form-control"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter admin email"
+                placeholder="Enter admin email or full name"
               />
             </div>
             <div className="form-group">

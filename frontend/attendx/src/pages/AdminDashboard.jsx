@@ -19,6 +19,9 @@ const AdminDashboard = () => {
   // Imported staff data state
   const [importedStaff, setImportedStaff] = useState([]);
   const [isLoadingImported, setIsLoadingImported] = useState(false);
+  const [selectedImportedStaff, setSelectedImportedStaff] = useState(new Set());
+  const [isCreatingAccounts, setIsCreatingAccounts] = useState(false);
+  const [accountCreationResult, setAccountCreationResult] = useState(null);
 
   // Fetch imported staff data
   useEffect(() => {
@@ -31,7 +34,7 @@ const AdminDashboard = () => {
     setIsLoadingImported(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/staff`,
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/imported-staff-leave`,
         {
           headers: {
             ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -47,6 +50,75 @@ const AdminDashboard = () => {
       console.error('Error fetching imported staff:', error);
     } finally {
       setIsLoadingImported(false);
+    }
+  };
+
+  const handleCreateAccountsFromImported = async () => {
+    if (selectedImportedStaff.size === 0) {
+      alert('Please select at least one staff member to create accounts');
+      return;
+    }
+
+    setIsCreatingAccounts(true);
+    try {
+      const staffIds = Array.from(selectedImportedStaff);
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/create-accounts-from-imported`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ staffIds })
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setAccountCreationResult({
+          success: true,
+          created: data.results.created,
+          alreadyExists: data.results.alreadyExists,
+          failed: data.results.failed,
+          tempPassword: data.results.tempPassword,
+          createdAccounts: data.results.createdAccounts || []
+        });
+        setSelectedImportedStaff(new Set());
+        await fetchImportedStaff();
+      } else {
+        setAccountCreationResult({
+          success: false,
+          message: data.message
+        });
+      }
+    } catch (error) {
+      setAccountCreationResult({
+        success: false,
+        message: error.message
+      });
+    } finally {
+      setIsCreatingAccounts(false);
+    }
+  };
+
+  const handleSelectImportedStaff = (staffId) => {
+    const updated = new Set(selectedImportedStaff);
+    if (updated.has(staffId)) {
+      updated.delete(staffId);
+    } else {
+      updated.add(staffId);
+    }
+    setSelectedImportedStaff(updated);
+  };
+
+  const handleSelectAllImportedStaff = () => {
+    if (selectedImportedStaff.size === importedStaff.length) {
+      setSelectedImportedStaff(new Set());
+    } else {
+      const allIds = new Set(importedStaff.map(s => s._id));
+      setSelectedImportedStaff(allIds);
     }
   };
 
@@ -627,7 +699,21 @@ const AdminDashboard = () => {
         {activeTab === 'imported-staff' && (
           <div>
             <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ marginBottom: '1rem' }}>Imported Staff Data from Excel</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3>Imported Staff Leave Data</h3>
+                {importedStaff.length > 0 && (
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button 
+                      className="btn btn-success"
+                      onClick={handleCreateAccountsFromImported}
+                      disabled={selectedImportedStaff.size === 0 || isCreatingAccounts}
+                    >
+                      {isCreatingAccounts ? 'Creating Accounts...' : `Create Accounts (${selectedImportedStaff.size})`}
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {isLoadingImported ? (
                 <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   Loading imported staff data...
@@ -641,47 +727,193 @@ const AdminDashboard = () => {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
                     <thead>
                       <tr style={{ borderBottom: '2px solid var(--border-color)', backgroundColor: 'rgba(100, 150, 255, 0.1)' }}>
+                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold', width: '40px' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedImportedStaff.size === importedStaff.length && importedStaff.length > 0}
+                            onChange={handleSelectAllImportedStaff}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </th>
                         <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Staff Name</th>
-                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Holiday Entitlement Days</th>
-                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Service Years</th>
-                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Carry Over Days</th>
-                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Duvet Days Used</th>
-                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Last Updated</th>
+                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Email</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>Holiday Entitlement</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>Carry Over Days</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>Days Taken So Far</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>Remaining Balance</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>Service Years</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>Duvet Days Used</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>Account Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {importedStaff.map((staff, index) => (
-                        <tr 
-                          key={staff._id || index} 
-                          style={{ 
-                            borderBottom: '1px solid var(--border-color)',
-                            backgroundColor: index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'transparent'
-                          }}
-                        >
-                          <td style={{ padding: '1rem' }}>
-                            <strong>{staff.staffName || '-'}</strong>
-                          </td>
-                          <td style={{ padding: '1rem' }}>
-                            {staff.holidayEntitlementDays !== undefined ? staff.holidayEntitlementDays : '-'}
-                          </td>
-                          <td style={{ padding: '1rem' }}>
-                            {staff.serviceYears !== undefined ? staff.serviceYears : '-'}
-                          </td>
-                          <td style={{ padding: '1rem' }}>
-                            {staff.carryOverDays !== undefined ? staff.carryOverDays : '-'}
-                          </td>
-                          <td style={{ padding: '1rem' }}>
-                            {staff.duvetDaysUsed !== undefined ? staff.duvetDaysUsed : '-'}
-                          </td>
-                          <td style={{ padding: '1rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                            {staff.updatedAt ? new Date(staff.updatedAt).toLocaleDateString() : 'N/A'}
-                          </td>
-                        </tr>
-                      ))}
+                      {importedStaff.map((staff, index) => {
+                        const remainingBalance = (staff.holidayEntitlementDays || 28) + (staff.carryOverDays || 0) - (staff.daysTakenSoFar || 0);
+                        return (
+                          <tr 
+                            key={staff._id || index} 
+                            style={{ 
+                              borderBottom: '1px solid var(--border-color)',
+                              backgroundColor: selectedImportedStaff.has(staff._id) ? 'rgba(100, 150, 255, 0.15)' : (index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'transparent')
+                            }}
+                          >
+                            <td style={{ padding: '1rem', textAlign: 'center' }}>
+                              <input 
+                                type="checkbox"
+                                checked={selectedImportedStaff.has(staff._id)}
+                                onChange={() => handleSelectImportedStaff(staff._id)}
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </td>
+                            <td style={{ padding: '1rem' }}>
+                              <strong>{staff.staffName || '-'}</strong>
+                            </td>
+                            <td style={{ padding: '1rem', fontSize: '0.9rem' }}>
+                              {staff.email || '-'}
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold', color: '#4CAF50' }}>
+                              {staff.holidayEntitlementDays ?? 28} days
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold', color: '#2196F3' }}>
+                              {staff.carryOverDays ?? 0} days
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold', color: '#FF9800' }}>
+                              {staff.daysTakenSoFar ?? 0} days
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold', color: remainingBalance < 0 ? '#f44336' : '#4CAF50' }}>
+                              {remainingBalance} days
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'center' }}>
+                              {staff.serviceYears ?? 0}
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'center' }}>
+                              {staff.duvetDaysUsed ?? 0}
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'center' }}>
+                              <span className={`badge ${staff.accountCreated ? 'badge-approved' : 'badge-pending'}`}>
+                                {staff.accountCreated ? 'Created' : 'Pending'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                   <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(100, 150, 255, 0.1)', borderRadius: 'var(--radius-sm)' }}>
-                    <strong>Total Records:</strong> {importedStaff.length}
+                    <strong>Total Records:</strong> {importedStaff.length} | <strong>Selected:</strong> {selectedImportedStaff.size}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Account Creation Result Modal */}
+        {accountCreationResult && (
+          <div className="modal-overlay active">
+            <div className="modal">
+              <div className="modal-header">
+                <h3>{accountCreationResult.success ? '✓ Accounts Created Successfully' : '✗ Account Creation Failed'}</h3>
+                <button className="close-btn" onClick={() => setAccountCreationResult(null)}>&times;</button>
+              </div>
+              
+              {accountCreationResult.success ? (
+                <div className="stacked-form">
+                  <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(76, 175, 80, 0.1)', borderRadius: 'var(--radius-sm)' }}>
+                    <p style={{ marginBottom: '0.5rem' }}>
+                      <strong>✓ Created:</strong> {accountCreationResult.created} accounts
+                    </p>
+                    <p style={{ marginBottom: '0.5rem' }}>
+                      <strong>⚠ Already Exists:</strong> {accountCreationResult.alreadyExists} accounts
+                    </p>
+                    {accountCreationResult.failed > 0 && (
+                      <p style={{ marginBottom: '0' }}>
+                        <strong>✗ Failed:</strong> {accountCreationResult.failed} accounts
+                      </p>
+                    )}
+                  </div>
+
+                  <div style={{ padding: '1.5rem', backgroundColor: 'rgba(255, 193, 7, 0.15)', borderRadius: 'var(--radius-sm)', border: '2px solid #FFC107', marginBottom: '1.5rem' }}>
+                    <h4 style={{ marginBottom: '1rem', color: '#FF9800' }}>📋 Temporary Password for All Staff</h4>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', backgroundColor: 'rgba(255, 255, 255, 0.8)', borderRadius: '0.5rem' }}>
+                      <input 
+                        type="text" 
+                        value={accountCreationResult.tempPassword} 
+                        readOnly 
+                        style={{ 
+                          flex: 1, 
+                          padding: '0.75rem', 
+                          fontSize: '1.1rem', 
+                          fontWeight: 'bold', 
+                          border: '1px solid #FFC107',
+                          borderRadius: '0.5rem',
+                          textAlign: 'center'
+                        }}
+                      />
+                      <button 
+                        className="btn btn-secondary"
+                        onClick={() => {
+                          navigator.clipboard.writeText(accountCreationResult.tempPassword);
+                          alert('Password copied to clipboard!');
+                        }}
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                      ⚠️ Share this password with all newly created staff. They should change it on first login.
+                    </p>
+                  </div>
+
+                  {accountCreationResult.createdAccounts?.length > 0 && (
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <h4 style={{ marginBottom: '0.75rem' }}>Created Credentials</h4>
+                      <div style={{ overflowX: 'auto', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '0.75rem' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
+                          <thead>
+                            <tr style={{ backgroundColor: 'rgba(0,0,0,0.03)', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                              <th style={{ textAlign: 'left', padding: '0.75rem' }}>Name</th>
+                              <th style={{ textAlign: 'left', padding: '0.75rem' }}>Email</th>
+                              <th style={{ textAlign: 'left', padding: '0.75rem' }}>Password</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {accountCreationResult.createdAccounts.map((account, index) => (
+                              <tr key={`${account.email}-${index}`} style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                                <td style={{ padding: '0.75rem' }}>{account.name || '-'}</td>
+                                <td style={{ padding: '0.75rem' }}>{account.email || '-'}</td>
+                                <td style={{ padding: '0.75rem', fontWeight: 600 }}>{account.password}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                    <button 
+                      type="button" 
+                      className="btn btn-primary"
+                      onClick={() => setAccountCreationResult(null)}
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="stacked-form">
+                  <p style={{ color: '#f44336', marginBottom: '1.5rem' }}>
+                    {accountCreationResult.message}
+                  </p>
+                  <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary"
+                      onClick={() => setAccountCreationResult(null)}
+                    >
+                      Close
+                    </button>
                   </div>
                 </div>
               )}

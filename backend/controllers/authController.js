@@ -7,8 +7,13 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // CHECK USER
-    const user = await User.findOne({ email });
+    // CHECK USER - by email or name
+    const user = await User.findOne({
+      $or: [
+        { email: email },
+        { name: email } // Allow login with name as well
+      ]
+    });
 
     if (!user) {
       return res.status(400).json({

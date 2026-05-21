@@ -13,7 +13,9 @@ const {
   getHolidayRequests,
   updateHolidayRequestStatus,
   getDuvetLogs,
-  exportPayrollCSV
+  exportPayrollCSV,
+  getImportedStaffLeave,
+  createAccountsFromImportedStaff
 } = require("../controllers/adminController");
 
 // IMPORT AUTH MIDDLEWARE
@@ -143,6 +145,20 @@ router.post(
       });
     }
   }
+);
+
+// GET IMPORTED STAFF LEAVE DATA
+router.get(
+  "/imported-staff-leave",
+  auth,
+  getImportedStaffLeave
+);
+
+// CREATE ACCOUNTS FROM IMPORTED STAFF
+router.post(
+  "/create-accounts-from-imported",
+  auth,
+  createAccountsFromImportedStaff
 );
 
 module.exports = router;

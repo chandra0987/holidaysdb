@@ -7,16 +7,28 @@ const staffLeaveSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    email: {
+      type: String,
+      trim: true,
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     holidayEntitlementDays: {
       type: Number,
-      default: 0,
+      default: 28,
     },
     serviceYears: {
       type: Number,
-      default: 0, 
-      // Consider adding validation to ensure this is a non-negative integer
+      default: 0,
     },
     carryOverDays: {
+      type: Number,
+      default: 0,
+    },
+    daysTakenSoFar: {
       type: Number,
       default: 0,
     },
@@ -24,6 +36,26 @@ const staffLeaveSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    accountCreated: {
+      type: Boolean,
+      default: false,
+    },
+    createdCredentials: {
+      email: {
+        type: String,
+        trim: true,
+        default: ''
+      },
+      password: {
+        type: String,
+        trim: true,
+        default: ''
+      },
+      createdAt: {
+        type: Date,
+        default: null
+      }
+    }
   },
   { timestamps: true }
 );
