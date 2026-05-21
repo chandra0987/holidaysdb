@@ -35,7 +35,6 @@ const AdminDashboard = () => {
     staff.serviceYears?.toString().includes(searchQuery)
   );
 
-<<<<<<< HEAD
   const getRemainingBalance = (staff) =>
     staff.remainingBalance ??
     ((staff.holidayEntitlement ?? 0) + (staff.carryOver ?? 0) - (staff.daysTaken ?? 0));
@@ -48,7 +47,8 @@ const AdminDashboard = () => {
   const csvValue = (value) => {
     const text = `${value ?? ''}`;
     return `"${text.replace(/"/g, '""')}"`;
-=======
+  };
+
   const filteredRequests = leaveRequests.filter(request =>
     request.staffName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     request.reason.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -62,7 +62,7 @@ const AdminDashboard = () => {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
->>>>>>> e73b60c5a935568154adfc948087a06968f50fb5
+
   };
 
   const handleClearSearch = () => setSearchQuery('');
@@ -225,7 +225,7 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === 'staff' && (
-<<<<<<< HEAD
+
           <div className="staff-card-grid">
             {staffMembers.length > 0 ? staffMembers.map(staff => {
               const remainingBalance = getRemainingBalance(staff);
@@ -264,57 +264,7 @@ const AdminDashboard = () => {
                 No staff members available.
               </div>
             )}
-=======
-          <div className="table-container">
-            <div className="staff-cards">
-  {filteredStaff.map((staff) => (
-    <div className="staff-card" key={staff.id}>
-      <div className="card-header">
-        <h3>{staff.name}</h3>
-        <span>{staff.department || "-"}</span>
-      </div>
 
-      <div className="card-body">
-        <div className="card-item">
-          <p>Service Years</p>
-          <h4>{staff.serviceYears ?? "-"}</h4>
-        </div>
-
-        <div className="card-item">
-          <p>Holiday Entitlement</p>
-          <h4>{staff.holidayEntitlement ?? "-"}</h4>
-        </div>
-
-        <div className="card-item">
-          <p>Carry Over</p>
-          <h4>{staff.carryOver ?? "-"}</h4>
-        </div>
-
-        <div className="card-item">
-          <p>Days Taken</p>
-          <h4>{staff.daysTaken ?? 0}</h4>
-        </div>
-
-        <div className="card-item">
-          <p>Remaining Balance</p>
-          <h4>{staff.remainingBalance ?? "-"}</h4>
-        </div>
-
-        <div className="card-item">
-          <p>Duvet Remaining</p>
-          <h4>{staff.duvetRemaining ?? "-"}</h4>
-        </div>
-      </div>
-    </div>
-  ))}
-
-  {filteredStaff.length === 0 && (
-    <div className="no-data">
-      No staff members match your search.
-    </div>
-  )}
-</div>
->>>>>>> e73b60c5a935568154adfc948087a06968f50fb5
           </div>
         )}
 
