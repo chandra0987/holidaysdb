@@ -113,12 +113,35 @@ const AdminDashboard = () => {
     payout.targetMonth.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
+  const filteredImportedStaff = (importedStaff || []).filter(staff =>
+    `${staff.staffName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    `${staff.holidayEntitlementDays || ''}`.toString().includes(searchQuery) ||
+    `${staff.serviceYears || ''}`.toString().includes(searchQuery)
+  );
+
   const handleSearchSubmit = (e) => {
     e.preventDefault();
 
+    // Normalize the query and trigger any tab-specific actions
+    const q = (searchQuery || '').toString().trim();
+    setSearchQuery(q);
+
+    // If user is viewing imported data, refetch to ensure latest before filtering
+    if (activeTab === 'imported-staff') {
+      fetchImportedStaff();
+    }
+
+    // For staff/requests/payouts the filtering is client-side (controlled by `searchQuery`),
+    // so updating searchQuery above is sufficient to apply the filter and rerender.
   };
 
-  const handleClearSearch = () => setSearchQuery('');
+  const handleClearSearch = async () => {
+    setSearchQuery('');
+    // If viewing imported staff, refresh the data to show the full unfiltered list
+    if (activeTab === 'imported-staff') {
+      await fetchImportedStaff();
+    }
+  };
 
   const exportToCSV = async () => {
     if (activeTab === 'staff') {
@@ -363,7 +386,7 @@ const AdminDashboard = () => {
         {activeTab === 'staff' && (
 
           <div className="staff-card-grid">
-            {staffMembers.length > 0 ? staffMembers.map(staff => {
+            {filteredStaff.length > 0 ? filteredStaff.map(staff => {
               const remainingBalance = getRemainingBalance(staff);
               const overdue = getOverdue(staff);
               const duvetStats = getDuvetStats(staff);
@@ -649,7 +672,7 @@ const AdminDashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {importedStaff.map((staff, index) => (
+                      {filteredImportedStaff.map((staff, index) => (
                         <tr 
                           key={staff._id || index} 
                           style={{ 
