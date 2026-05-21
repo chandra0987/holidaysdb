@@ -113,6 +113,12 @@ const AdminDashboard = () => {
     payout.targetMonth.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
+  const filteredImportedStaff = (importedStaff || []).filter(staff =>
+    `${staff.staffName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    `${staff.holidayEntitlementDays || ''}`.toString().includes(searchQuery) ||
+    `${staff.serviceYears || ''}`.toString().includes(searchQuery)
+  );
+
   const handleSearchSubmit = (e) => {
     e.preventDefault();
 
@@ -381,7 +387,7 @@ const AdminDashboard = () => {
         {activeTab === 'staff' && (
 
           <div className="staff-card-grid">
-            {staffMembers.length > 0 ? staffMembers.map(staff => {
+            {filteredStaff.length > 0 ? filteredStaff.map(staff => {
               const remainingBalance = getRemainingBalance(staff);
               const overdue = getOverdue(staff);
               const duvetStats = getDuvetStats(staff);
@@ -667,7 +673,7 @@ const AdminDashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {importedStaff.map((staff, index) => (
+                      {filteredImportedStaff.map((staff, index) => (
                         <tr 
                           key={staff._id || index} 
                           style={{ 
