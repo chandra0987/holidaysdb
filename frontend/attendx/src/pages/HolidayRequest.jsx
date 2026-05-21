@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const HolidayRequest = () => {
     const { token } = useAuth();
     const navigate = useNavigate();
@@ -45,7 +47,7 @@ const HolidayRequest = () => {
         setMessage('');
 
         try {
-            const response = await fetch('http://localhost:5000/api/staff/holiday-payout', {
+            const response = await fetch(`${API_URL}/api/staff/holiday-payout`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -71,7 +73,7 @@ const HolidayRequest = () => {
                 setReason('');
                 setTimeout(() => navigate('/staff'), 2000);
             } else {
-                setMessage(data.message || 'Error submitting request');
+                setMessage(data.message || data.msg || 'Error submitting request');
             }
         } catch (error) {
             setMessage('Network error: ' + error.message);

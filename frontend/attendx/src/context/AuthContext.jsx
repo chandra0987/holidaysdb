@@ -21,6 +21,15 @@ export const AuthProvider = ({ children }) => {
     ...(token ? { Authorization: `Bearer ${token}` } : {})
   });
 
+  const handleUnauthorized = (response) => {
+    if (response && response.status === 401) {
+      logout();
+      return true;
+    }
+
+    return false;
+  };
+
   const login = async (email, password) => {
     try {
       const response = await fetch(`${API_URL}/api/auth/login`, {
@@ -61,7 +70,7 @@ export const AuthProvider = ({ children }) => {
       const response = await fetch(`${API_URL}/api/admin/staff`, {
         headers: authHeaders()
       });
-      if (!response.ok) return;
+      if (handleUnauthorized(response) || !response.ok) return;
       const data = await response.json();
       setUsers(data.data || []);
     } catch (error) {
@@ -75,7 +84,7 @@ export const AuthProvider = ({ children }) => {
       const response = await fetch(`${API_URL}/api/admin/holiday-requests`, {
         headers: authHeaders()
       });
-      if (!response.ok) return;
+      if (handleUnauthorized(response) || !response.ok) return;
       const data = await response.json();
       setLeaveRequests(data.data || []);
     } catch (error) {
@@ -89,7 +98,7 @@ export const AuthProvider = ({ children }) => {
       const response = await fetch(`${API_URL}/api/staff/holiday-requests`, {
         headers: authHeaders()
       });
-      if (!response.ok) return;
+      if (handleUnauthorized(response) || !response.ok) return;
       const data = await response.json();
       setLeaveRequests(data.data || []);
     } catch (error) {
@@ -103,7 +112,7 @@ export const AuthProvider = ({ children }) => {
       const response = await fetch(`${API_URL}/api/staff/duvet-logs`, {
         headers: authHeaders()
       });
-      if (!response.ok) return;
+      if (handleUnauthorized(response) || !response.ok) return;
       const data = await response.json();
       setDuvetLogs(data.data || []);
     } catch (error) {
@@ -117,7 +126,7 @@ export const AuthProvider = ({ children }) => {
       const response = await fetch(`${API_URL}/api/admin/holiday-payouts`, {
         headers: authHeaders()
       });
-      if (!response.ok) return;
+      if (handleUnauthorized(response) || !response.ok) return;
       const data = await response.json();
       setHolidayPayouts(data.data || []);
     } catch (error) {
@@ -144,6 +153,9 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
+      if (handleUnauthorized(response)) {
+        return { success: false, message: 'Session expired. Please sign in again.' };
+      }
       if (!response.ok) {
         console.error('Create staff failed:', response.status, data);
         return { success: false, message: data?.message || 'Create failed' };
@@ -187,6 +199,13 @@ export const AuthProvider = ({ children }) => {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({ payoutId, status, payoutAmount, notes })
+    }).then(response => {
+      if (handleUnauthorized(response)) {
+        return;
+      }
+      if (!response.ok) {
+        console.error('Update payout status error:', response.status);
+      }
     }).catch(err => console.error('Update payout status error:', err));
   };
 
@@ -200,6 +219,9 @@ export const AuthProvider = ({ children }) => {
           body: JSON.stringify({ date: requestData.date, note: requestData.reason })
         });
         const data = await response.json().catch(() => ({}));
+        if (handleUnauthorized(response)) {
+          return { success: false, message: 'Session expired. Please sign in again.' };
+        }
         if (response.ok) {
           // refresh lists
           await fetchDuvetLogs();
@@ -228,6 +250,9 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json().catch(() => ({}));
+      if (handleUnauthorized(response)) {
+        return { success: false, message: 'Session expired. Please sign in again.' };
+      }
       if (response.ok) {
         // refresh staff view
         await fetchStaffLeaveRequests();
@@ -250,6 +275,13 @@ export const AuthProvider = ({ children }) => {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({ requestId, status })
+    }).then(response => {
+      if (handleUnauthorized(response)) {
+        return;
+      }
+      if (!response.ok) {
+        console.error('Update status error:', response.status);
+      }
     }).catch(err => console.error('Update status error:', err));
   };
 

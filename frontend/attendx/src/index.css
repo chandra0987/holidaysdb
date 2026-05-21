@@ -756,7 +756,7 @@ textarea.form-control {
   color: var(--text-main);
 }
 
-..request-card-body {
+.request-card-body {
   display: grid;
   gap: 1rem;
 }
