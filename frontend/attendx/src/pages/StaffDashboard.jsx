@@ -25,6 +25,11 @@ const StaffDashboard = () => {
   const handleRequestLeave = (e) => {
     e.preventDefault();
     if (!leaveDate || !leaveReason || !leaveDays) return;
+    // enforce duvet day limit
+    if (leaveType === 'Duvet Day' && duvetDaysCount >= 8) {
+      showToast('Maximum duvet days reached', 'error');
+      return;
+    }
 
     requestLeave({ 
       date: leaveDate, 
@@ -51,6 +56,7 @@ const StaffDashboard = () => {
   // duvet days logged by this user
   const myDuvetLogs = (duvetLogs || []).filter(d => String(d.userId) === String(user._id) || (d.userId && d.userId._id && String(d.userId._id) === String(user._id)));
   const duvetDaysCount = myDuvetLogs.length;
+  const duvetDaysRemaining = Math.max(0, 8 - duvetDaysCount);
 
   return (
     <div className="container fade-in">
@@ -97,6 +103,14 @@ const StaffDashboard = () => {
             <h3>Duvet Days Logged</h3>
           </div>
           <div className="stat-value">{duvetDaysCount}</div>
+        </div>
+
+        <div className="glass-panel stat-card">
+          <div className="stat-header">
+            <div className="stat-icon"><AlertTriangle size={24} /></div>
+            <h3>Duvet Remaining</h3>
+          </div>
+          <div className="stat-value">{duvetDaysRemaining}</div>
         </div>
       </div>
 
@@ -185,15 +199,21 @@ const StaffDashboard = () => {
             </div>
             <div className="form-group">
               <label className="form-label">Leave Type</label>
-              <select 
-                className="form-control"
-                value={leaveType}
-                onChange={(e) => setLeaveType(e.target.value)}
-                required
-              >
-                <option value="Regular">Regular Leave</option>
-                <option value="Duvet Day">Duvet Day</option>
-              </select>
+                <select
+                  className="form-control"
+                  value={leaveType}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setLeaveType(v);
+                    if (v === 'Duvet Day') setLeaveDays('1');
+                  }}
+                  required
+                >
+                  <option value="Regular">Regular Leave</option>
+                  <option value="Duvet Day" disabled={duvetDaysRemaining === 0}>
+                    {duvetDaysRemaining === 0 ? 'Duvet Day (limit reached)' : 'Duvet Day'}
+                  </option>
+                </select>
             </div>
             <div className="form-group">
               <label className="form-label">Number of Days</label>
@@ -201,7 +221,8 @@ const StaffDashboard = () => {
                 type="number"
                 className="form-control"
                 value={leaveDays}
-                onChange={(e) => setLeaveDays(e.target.value)}
+                  onChange={(e) => setLeaveDays(e.target.value)}
+                  disabled={leaveType === 'Duvet Day'}
                 min="1"
                 max="30"
                 required

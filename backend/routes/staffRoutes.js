@@ -8,16 +8,19 @@ const { createHolidayRequest } = require("../controllers/staffControlller");
 
 router.get("/profile", auth, async (req, res) => {
   const user = await User.findById(req.user.id);
+  const remainingBalance = user.holidayEntitlement + user.carryOver - user.daysTaken;
 
-  const remainingBalance =
-    user.holidayEntitlement +
-    user.carryOver -
-    user.daysTaken;
+  // compute duvet days used in current calendar year
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+  const usedThisYear = await DuvetDay.countDocuments({ userId: user._id, date: { $gte: startOfYear, $lte: endOfYear } });
 
   res.json({
     ...user._doc,
     remainingBalance,
-    duvetRemaining: 8 - user.duvetDaysUsed
+    duvetDaysUsed: usedThisYear,
+    duvetRemaining: Math.max(0, 8 - usedThisYear)
   });
 });
 
@@ -26,19 +29,21 @@ router.post("/duvet-day", auth, async (req, res) => {
 
   const user = await User.findById(req.user.id);
 
-  if (user.duvetDaysUsed >= 8) {
-    return res.status(400).json({
-      msg: "Limit reached"
-    });
+  // count duvet days in current calendar year
+  const dt = date ? new Date(date) : new Date();
+  const year = dt.getFullYear();
+  const startOfYear = new Date(year, 0, 1);
+  const endOfYear = new Date(year, 11, 31, 23, 59, 59);
+  const usedThisYear = await DuvetDay.countDocuments({ userId: user._id, date: { $gte: startOfYear, $lte: endOfYear } });
+
+  if (usedThisYear >= 8) {
+    return res.status(400).json({ msg: "Limit reached" });
   }
 
-  await DuvetDay.create({
-    userId: user._id,
-    date,
-    note
-  });
+  await DuvetDay.create({ userId: user._id, date, note });
 
-  user.duvetDaysUsed += 1;
+  // keep user.duvetDaysUsed in sync for compatibility (store latest count)
+  user.duvetDaysUsed = usedThisYear + 1;
   await user.save();
 
   res.json({ msg: "Duvet day logged" });

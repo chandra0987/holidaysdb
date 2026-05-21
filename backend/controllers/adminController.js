@@ -16,26 +16,22 @@ exports.getAllStaff = async (req, res) => {
 
     const users = await User.find();
 
-    const updatedUsers = users.map(user => {
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
 
-      const remainingBalance =
-        user.holidayEntitlement +
-        user.carryOver -
-        user.daysTaken;
-
+    const updatedUsers = await Promise.all(users.map(async (user) => {
+      const remainingBalance = user.holidayEntitlement + user.carryOver - user.daysTaken;
+      const usedThisYear = await DuvetDay.countDocuments({ userId: user._id, date: { $gte: startOfYear, $lte: endOfYear } });
       return {
         ...user._doc,
         remainingBalance,
-        duvetRemaining:
-          8 - user.duvetDaysUsed
+        duvetDaysUsed: usedThisYear,
+        duvetRemaining: Math.max(0, 8 - usedThisYear)
       };
+    }));
 
-    });
-
-    res.status(200).json({
-      success: true,
-      data: updatedUsers
-    });
+    res.status(200).json({ success: true, data: updatedUsers });
 
   } catch (error) {
 
@@ -198,24 +194,20 @@ exports.exportPayrollCSV =
 
       const users = await User.find({ role: "staff" });
 
-      const records = users.map(user => {
+      const now = new Date();
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
 
-        const remainingBalance =
-          (user.holidayEntitlement || 0) +
-          (user.carryOver || 0) -
-          (user.daysTaken || 0);
-
+      const records = await Promise.all(users.map(async (user) => {
+        const remainingBalance = (user.holidayEntitlement || 0) + (user.carryOver || 0) - (user.daysTaken || 0);
+        const usedThisYear = await DuvetDay.countDocuments({ userId: user._id, date: { $gte: startOfYear, $lte: endOfYear } });
         return {
           name: user.name,
-          monthlyHolidayPaidDaysRequested:
-            user.daysTaken,
-          duvetDaysTakenInCurrentPayCycle:
-            user.duvetDaysUsed,
-          yearToDateOutstandingBalances:
-            remainingBalance
+          monthlyHolidayPaidDaysRequested: user.daysTaken,
+          duvetDaysTakenInCurrentPayCycle: usedThisYear,
+          yearToDateOutstandingBalances: remainingBalance
         };
-
-      });
+      }));
 
       const csvLines = [
         [

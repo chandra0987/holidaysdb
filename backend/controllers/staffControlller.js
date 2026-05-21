@@ -7,25 +7,30 @@ const getBalanceData = (user) => {
   const holidayEntitlement = user.holidayEntitlement || 0;
   const carryOver = user.carryOver || 0;
   const daysTaken = user.daysTaken || 0;
-  const duvetDaysUsed = user.duvetDaysUsed || 0;
 
   return {
-    remainingBalance: holidayEntitlement + carryOver - daysTaken,
-    duvetRemaining: 8 - duvetDaysUsed
+    remainingBalance: holidayEntitlement + carryOver - daysTaken
   };
 };
 
 exports.getProfile = async (req, res) => {
   try {
-
     const user = await User.findById(req.user.id);
-    const { remainingBalance, duvetRemaining } = getBalanceData(user);
+
+    const { remainingBalance } = getBalanceData(user);
+
+    // compute duvet days used in current year
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+    const duvetDaysUsed = await DuvetDay.countDocuments({ userId: user._id, date: { $gte: startOfYear, $lte: endOfYear } });
 
     res.status(200).json({
       success: true,
       user,
       remainingBalance,
-      duvetRemaining
+      duvetDaysUsed,
+      duvetRemaining: Math.max(0, 8 - duvetDaysUsed)
     });
 
   } catch (error) {
@@ -49,30 +54,28 @@ exports.logDuvetDay = async (req, res) => {
     );
 
     
-    if (user.duvetDaysUsed >= 8) {
+    // compute duvet days in the target calendar year
+    const dt = date ? new Date(date) : new Date();
+    const year = dt.getFullYear();
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59);
+    const usedThisYear = await DuvetDay.countDocuments({ userId: user._id, date: { $gte: startOfYear, $lte: endOfYear } });
+
+    if (usedThisYear >= 8) {
       return res.status(400).json({
-        
         success: false,
         message: "Maximum duvet days reached"
       });
     }
 
     // SAVE DUVET DAY
-    await DuvetDay.create({
-      userId: user._id,
-      date,
-      note
-    });
+    await DuvetDay.create({ userId: user._id, date, note });
 
-    // UPDATE COUNT
-    user.duvetDaysUsed += 1;
-
+    // update cached count on user for compatibility
+    user.duvetDaysUsed = usedThisYear + 1;
     await user.save();
 
-    res.status(200).json({
-      success: true,
-      message: "Duvet day added"
-    });
+    res.status(200).json({ success: true, message: "Duvet day added" });
 
   } catch (error) {
 
