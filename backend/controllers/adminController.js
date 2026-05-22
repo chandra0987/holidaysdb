@@ -219,16 +219,22 @@ exports.exportPayrollCSV =
           "Name",
           "Monthly Holiday Paid Days Requested",
           "Duvet Days taken in current pay cycle",
-          "Year-to-date outstanding balances"
+          "Year-to-date outstanding balances",
+          "sum",
+          "multiple"
         ].map(escapeCsvValue).join(",")
       ];
 
       records.forEach((record) => {
+        let sum = record.monthlyHolidayPaidDaysRequested+record.duvetDaysTakenInCurrentPayCycle+record.yearToDateOutstandingBalances;
+        let multiple = record.yearToDateOutstandingBalances*2;
         csvLines.push([
           record.name,
           record.monthlyHolidayPaidDaysRequested,
-          record.duvetDaysTakenInCurrentPayCycle,
-          record.yearToDateOutstandingBalances
+          record.duvetDaysTakenInCurrentPayCycle, 
+          record.yearToDateOutstandingBalances,
+          sum,
+          multiple
         ].map(escapeCsvValue).join(","));
       });
 
