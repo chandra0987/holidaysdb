@@ -10,6 +10,10 @@ exports.login = async (req, res) => {
     // CHECK USER
     const user = await User.findOne({ email });
 
+    console.log("[DEBUG] email received:", email);
+    console.log("[DEBUG] user found:", user ? user.email : "NOT FOUND");
+    console.log("[DEBUG] stored password starts with $2 (hashed)?", user?.password?.startsWith('$2'));
+
     if (!user) {
       return res.status(400).json({
         success: false,
@@ -21,8 +25,10 @@ exports.login = async (req, res) => {
     let isMatch;
     if (typeof user.password === 'string' && user.password.startsWith('$2')) {
       isMatch = await bcrypt.compare(password, user.password);
+      console.log("[DEBUG] bcrypt compare result:", isMatch);
     } else {
       isMatch = password === user.password;
+      console.log("[DEBUG] plain text compare result:", isMatch);
     }
 
     if (!isMatch) {
