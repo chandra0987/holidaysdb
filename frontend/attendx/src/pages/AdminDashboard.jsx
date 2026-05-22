@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { Users, UserPlus, CheckCircle, XCircle, Calendar, Download, Search, Upload } from 'lucide-react';
 
 const AdminDashboard = () => {
-  const { users, leaveRequests, holidayPayouts, createStaff, updateLeaveStatus, updatePayoutStatus, token, duvetLogs } = useAuth();
-  const [activeTab, setActiveTab] = useState('staff'); // staff, requests, payouts, new-staff
+  const { users, leaveRequests, holidayPayouts, duvetLogs, createStaff, updateLeaveStatus, updatePayoutStatus, fetchDuvetLogs, token } = useAuth();
+  const [activeTab, setActiveTab] = useState('staff'); // staff, requests, duvet-logs, payouts, new-staff
   const [payoutModal, setPayoutModal] = useState({ show: false, payoutId: '', status: '', amount: '', notes: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [isExporting, setIsExporting] = useState(false);
@@ -19,6 +18,19 @@ const AdminDashboard = () => {
   // Imported staff data state
   const [importedStaff, setImportedStaff] = useState([]);
   const [isLoadingImported, setIsLoadingImported] = useState(false);
+  const [selectedImportedStaff, setSelectedImportedStaff] = useState(new Set());
+  const [isCreatingAccounts, setIsCreatingAccounts] = useState(false);
+  const [accountCreationResult, setAccountCreationResult] = useState(null);
+
+  const toNumber = (value, fallback = 0) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
+  const toText = (value, fallback = '-') => {
+    if (value === null || value === undefined || value === '') return fallback;
+    return String(value);
+  };
 
   // Fetch imported staff data
   useEffect(() => {
@@ -31,7 +43,7 @@ const AdminDashboard = () => {
     setIsLoadingImported(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/staff`,
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/imported-staff-leave`,
         {
           headers: {
             ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -50,6 +62,103 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleCreateAccountsFromImported = async () => {
+    if (selectedImportedStaff.size === 0) {
+      alert('Please select at least one staff member to create accounts');
+      return;
+    }
+
+    setIsCreatingAccounts(true);
+    try {
+      const staffIds = Array.from(selectedImportedStaff);
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/create-accounts-from-imported`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ staffIds })
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setAccountCreationResult({
+          success: true,
+          created: data.results.created,
+          alreadyExists: data.results.alreadyExists,
+          failed: data.results.failed,
+          tempPassword: data.results.tempPassword,
+          createdAccounts: data.results.createdAccounts || []
+        });
+        setSelectedImportedStaff(new Set());
+        await fetchImportedStaff();
+      } else {
+        setAccountCreationResult({
+          success: false,
+          message: data.message
+        });
+      }
+    } catch (error) {
+      setAccountCreationResult({
+        success: false,
+        message: error.message
+      });
+    } finally {
+      setIsCreatingAccounts(false);
+    }
+  };
+
+  const handleClearImportedStaff = async () => {
+    const confirmed = window.confirm('Clear all imported staff data? This will remove the imported snapshot records only.');
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/imported-staff-leave`,
+        {
+          method: 'DELETE',
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          }
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to clear imported data');
+      }
+
+      setImportedStaff([]);
+      setSelectedImportedStaff(new Set());
+      alert(`Imported data cleared (${data.deletedCount || 0} records removed)`);
+    } catch (error) {
+      alert(error.message || 'Failed to clear imported data');
+    }
+  };
+
+  const handleSelectImportedStaff = (staffId) => {
+    const updated = new Set(selectedImportedStaff);
+    if (updated.has(staffId)) {
+      updated.delete(staffId);
+    } else {
+      updated.add(staffId);
+    }
+    setSelectedImportedStaff(updated);
+  };
+
+  const handleSelectAllImportedStaff = () => {
+    if (selectedImportedStaff.size === importedStaff.length) {
+      setSelectedImportedStaff(new Set());
+    } else {
+      const allIds = new Set(importedStaff.map(s => s._id));
+      setSelectedImportedStaff(allIds);
+    }
+  };
+
   const handleCreateStaff = async (e) => {
     e.preventDefault();
     const result = await createStaff({ name, email, password });
@@ -63,17 +172,28 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleUpdateLeaveStatus = async (requestId, status) => {
+    const result = await updateLeaveStatus(requestId, status);
+    if (!result?.success) {
+      alert(result?.message || 'Failed to update request status');
+      return;
+    }
+
+    if (activeTab === 'imported-staff') {
+      await fetchImportedStaff();
+    }
+  };
+
   const staffMembers = users.filter(u => u.role === 'staff');
   const filteredStaff = staffMembers.filter(staff =>
-    staff.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    staff.email?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-    staff.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    staff.serviceYears?.toString().includes(searchQuery)
+    `${staff.name || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    `${staff.email || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    `${staff.department || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    `${staff.serviceYears ?? ''}`.includes(searchQuery)
   );
 
   const getRemainingBalance = (staff) =>
-    staff.remainingBalance ??
-    ((staff.holidayEntitlement ?? 0) + (staff.carryOver ?? 0) - (staff.daysTaken ?? 0));
+    toNumber(staff.remainingBalance, toNumber(staff.holidayEntitlement, 0) + toNumber(staff.carryOver, 0) - toNumber(staff.daysTaken, 0));
 
   const getOverdue = (staff) => {
     const balance = getRemainingBalance(staff);
@@ -81,8 +201,8 @@ const AdminDashboard = () => {
   };
 
   const getDuvetStats = (staff) => ({
-    used: staff.duvetDaysUsed ?? 0,
-    remaining: staff.duvetRemaining ?? Math.max(0, 8 - (staff.duvetDaysUsed ?? 0))
+    used: toNumber(staff.duvetDaysUsed, 0),
+    remaining: toNumber(staff.duvetRemaining, Math.max(0, 8 - toNumber(staff.duvetDaysUsed, 0)))
   });
 
   const csvValue = (value) => {
@@ -90,17 +210,17 @@ const AdminDashboard = () => {
     return `"${text.replace(/"/g, '""')}"`;
   };
 
-  const duvetRequestRows = (duvetLogs || []).map(log => ({
-    _id: log._id,
-    staffName: log.staffName || log.userId?.name || 'Unknown',
-    date: log.date,
-    type: 'Duvet Day',
-    reason: log.note || '-',
-    status: 'logged',
-    source: 'duvet'
-  }));
+  const downloadCsv = (rows, filename) => {
+    const encodedUri = encodeURI(`data:text/csv;charset=utf-8,${rows.join('\n')}`);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-  const allRequests = [...leaveRequests, ...duvetRequestRows];
+  const allRequests = [...leaveRequests];
 
   const filteredRequests = allRequests.filter(request =>
     `${request.staffName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -109,14 +229,26 @@ const AdminDashboard = () => {
   );
 
   const filteredPayouts = holidayPayouts?.filter(payout =>
-    payout.staffName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    payout.targetMonth.toLowerCase().includes(searchQuery.toLowerCase())
+    `${payout.staffName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    `${payout.targetMonth || ''}`.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
+
+  const filteredDuvetLogs = (duvetLogs || []).filter(log =>
+    `${log.staffName || log.userId?.name || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    `${log.note || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    `${log.date || ''}`.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const filteredImportedStaff = (importedStaff || []).filter(staff =>
     `${staff.staffName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    `${staff.holidayEntitlementDays || ''}`.toString().includes(searchQuery) ||
-    `${staff.serviceYears || ''}`.toString().includes(searchQuery)
+    `${staff.email || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    `${staff.holidayEntitlementDays ?? ''}`.includes(searchQuery) ||
+    `${staff.carryOverDays ?? ''}`.includes(searchQuery) ||
+    `${staff.daysTakenSoFar ?? ''}`.includes(searchQuery) ||
+    `${staff.remainingBalance ?? ''}`.includes(searchQuery) ||
+    `${staff.serviceYears ?? ''}`.includes(searchQuery) ||
+    `${staff.accountCreated ? 'created' : 'pending'}`.includes(searchQuery.toLowerCase()) ||
+    `${staff.isWorking ? 'working' : 'not working'}`.includes(searchQuery.toLowerCase())
   );
 
   const handleSearchSubmit = (e) => {
@@ -129,6 +261,8 @@ const AdminDashboard = () => {
     // If user is viewing imported data, refetch to ensure latest before filtering
     if (activeTab === 'imported-staff') {
       fetchImportedStaff();
+    } else if (activeTab === 'duvet-logs') {
+      fetchDuvetLogs();
     }
 
     // For staff/requests/payouts the filtering is client-side (controlled by `searchQuery`),
@@ -140,32 +274,34 @@ const AdminDashboard = () => {
     // If viewing imported staff, refresh the data to show the full unfiltered list
     if (activeTab === 'imported-staff') {
       await fetchImportedStaff();
+    } else if (activeTab === 'duvet-logs') {
+      await fetchDuvetLogs();
     }
   };
 
   const exportToCSV = async () => {
     if (activeTab === 'staff') {
-      setIsExporting(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/export-csv`, {
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          }
-        });
+        setIsExporting(true);
+        const rows = [
+          ['Name', 'Email', 'Department', 'Holiday Entitlement', 'Carry Over', 'Days Taken', 'Remaining Balance', 'Duvet Days Used', 'Duvet Remaining', 'Service Years']
+            .map(csvValue)
+            .join(','),
+          ...filteredStaff.map(staff => [
+            staff.name,
+            staff.email,
+            staff.department,
+            staff.holidayEntitlement ?? 0,
+            staff.carryOver ?? 0,
+            staff.daysTaken ?? 0,
+            getRemainingBalance(staff),
+            getDuvetStats(staff).used,
+            getDuvetStats(staff).remaining,
+            staff.serviceYears ?? 0
+          ].map(csvValue).join(','))
+        ];
 
-        if (!response.ok) {
-          throw new Error('Unable to export CSV');
-        }
-
-        const blob = await response.blob();
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = `staff_export_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(downloadUrl);
+        downloadCsv(rows, `staff_export_${new Date().toISOString().split('T')[0]}.csv`);
       } catch (error) {
         alert(error.message || 'Failed to export CSV');
       } finally {
@@ -174,27 +310,70 @@ const AdminDashboard = () => {
       return;
     }
 
-    let csvContent = "data:text/csv;charset=utf-8,";
+    let rows = [];
     if (activeTab === 'requests') {
-      csvContent += "Staff Name,Date,Type,Reason,Status\n";
-      leaveRequests.forEach(req => {
-        const reason = req.reason.replace(/,/g, " "); // prevent comma collision
-        csvContent += `${req.staffName},${req.date},${req.type || 'Regular'},${reason},${req.status}\n`;
-      });
+      rows = [
+        ['Staff Name', 'Date', 'Type', 'Reason', 'Status', 'Source'].map(csvValue).join(','),
+        ...filteredRequests.map(req => [
+          req.staffName,
+          req.date,
+          req.type || 'Regular',
+          req.reason,
+          req.status,
+          req.source || 'holiday-request'
+        ].map(csvValue).join(','))
+      ];
     } else if (activeTab === 'payouts') {
-      csvContent += "Staff Name,From Date,To Date,Days,Target Month,Amount,Status\n";
-      filteredPayouts.forEach(payout => {
-        csvContent += `${payout.staffName},${payout.fromDate},${payout.toDate},${payout.numberOfDays},${payout.targetMonth},\u00a3${payout.payoutAmount || 0},${payout.status}\n`;
-      });
+      rows = [
+        ['Staff Name', 'From Date', 'To Date', 'Days', 'Target Month', 'Amount', 'Status', 'Notes'].map(csvValue).join(','),
+        ...filteredPayouts.map(payout => [
+          payout.staffName,
+          payout.fromDate,
+          payout.toDate,
+          payout.numberOfDays,
+          payout.targetMonth,
+          payout.payoutAmount ?? 0,
+          payout.status,
+          payout.notes || ''
+        ].map(csvValue).join(','))
+      ];
+    } else if (activeTab === 'duvet-logs') {
+      rows = [
+        ['Staff Name', 'Date', 'Note', 'Created At', 'Updated At'].map(csvValue).join(','),
+        ...filteredDuvetLogs.map(log => [
+          log.staffName || log.userId?.name || 'Unknown',
+          log.date,
+          log.note || '',
+          log.createdAt ? new Date(log.createdAt).toLocaleDateString() : 'N/A',
+          log.updatedAt ? new Date(log.updatedAt).toLocaleDateString() : 'N/A'
+        ].map(csvValue).join(','))
+      ];
+    } else if (activeTab === 'imported-staff') {
+      rows = [
+        ['Staff Name', 'Email', 'Department', 'Holiday Entitlement', 'Carry Over', 'Days Taken', 'Remaining Balance', 'Service Years', 'Duvet Days Used', 'Working', 'Account Status', 'Updated At'].map(csvValue).join(','),
+        ...filteredImportedStaff.map(staff => [
+          staff.staffName,
+          staff.email,
+          staff.department,
+          staff.holidayEntitlementDays ?? 28,
+          staff.carryOverDays ?? 0,
+          staff.daysTakenSoFar ?? 0,
+          staff.remainingBalance ?? (toNumber(staff.holidayEntitlementDays, 28) + toNumber(staff.carryOverDays, 0) - toNumber(staff.daysTakenSoFar, 0)),
+          staff.serviceYears ?? 0,
+          staff.duvetDaysUsed ?? 0,
+          staff.isWorking ? 'Working' : 'Not Working',
+          staff.accountCreated ? 'Created' : 'Pending',
+          staff.updatedAt ? new Date(staff.updatedAt).toLocaleDateString() : 'N/A'
+        ].map(csvValue).join(','))
+      ];
     }
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `${activeTab}_export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (rows.length === 0) {
+      alert('No exportable data found for this section');
+      return;
+    }
+
+    downloadCsv(rows, `${activeTab}_export_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   const handleImportStaff = async (event) => {
@@ -267,7 +446,7 @@ const AdminDashboard = () => {
                   onClick={() => fileInputRef.current?.click()} 
                   disabled={isUploading}
                 >
-                  <Upload size={18} /> {isUploading ? 'Importing...' : 'Import Staff'}
+                  {isUploading ? 'Importing...' : 'Import Staff'}
                 </button>
                 <input
                   ref={fileInputRef}
@@ -279,7 +458,7 @@ const AdminDashboard = () => {
               </>
             )}
             <button className="btn btn-secondary" onClick={exportToCSV} disabled={isExporting}>
-              <Download size={18} /> {isExporting ? 'Exporting...' : 'Export CSV'}
+              {isExporting ? 'Exporting...' : 'Export CSV'}
             </button>
           </div>
         )}
@@ -288,7 +467,6 @@ const AdminDashboard = () => {
       <div className="dashboard-grid">
         <div className="glass-panel stat-card atm-card">
           <div className="stat-header">
-            <div className="stat-icon blue"><Users size={24} /></div>
             <h3>Total Staff</h3>
           </div>
           <div className="stat-value">{staffMembers.length}</div>
@@ -296,7 +474,6 @@ const AdminDashboard = () => {
         
         <div className="glass-panel stat-card atm-card">
           <div className="stat-header">
-            <div className="stat-icon orange"><Calendar size={24} /></div>
             <h3>Pending Leaves</h3>
           </div>
           <div className="stat-value">
@@ -306,7 +483,6 @@ const AdminDashboard = () => {
 
         <div className="glass-panel stat-card atm-card">
           <div className="stat-header">
-            <div className="stat-icon purple"><Calendar size={24} /></div>
             <h3>Pending Payouts</h3>
           </div>
           <div className="stat-value">
@@ -316,7 +492,6 @@ const AdminDashboard = () => {
 
         <div className="glass-panel stat-card atm-card">
           <div className="stat-header">
-            <div className="stat-icon green"><Users size={24} /></div>
             <h3>Departments</h3>
           </div>
           <div className="stat-value">
@@ -340,6 +515,12 @@ const AdminDashboard = () => {
             Leave Requests
           </div>
           <div 
+            className={`auth-tab ${activeTab === 'duvet-logs' ? 'active' : ''}`}
+            onClick={() => setActiveTab('duvet-logs')}
+          >
+            Duvet Logs
+          </div>
+          <div 
             className={`auth-tab ${activeTab === 'payouts' ? 'active' : ''}`}
             onClick={() => setActiveTab('payouts')}
           >
@@ -349,7 +530,6 @@ const AdminDashboard = () => {
             className={`auth-tab ${activeTab === 'new-staff' ? 'active' : ''}`}
             onClick={() => setActiveTab('new-staff')}
           >
-            <UserPlus size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'text-bottom' }} />
             Add Staff
           </div>
           <div 
@@ -361,18 +541,18 @@ const AdminDashboard = () => {
         
         </div>
 
-        {(activeTab === 'staff' || activeTab === 'requests' || activeTab === 'payouts' || activeTab === 'imported-staff') && (
+        {(activeTab === 'staff' || activeTab === 'requests' || activeTab === 'duvet-logs' || activeTab === 'payouts' || activeTab === 'imported-staff') && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
             <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '0.5rem', flex: '1 1 320px' }}>
               <input
                 type="text"
                 className="form-control"
-                placeholder={activeTab === 'staff' ? 'Search staff by name, department or years' : activeTab === 'payouts' ? 'Search payouts by staff name or month' : activeTab === 'imported-staff' ? 'Search imported staff by name' : 'Search requests by name, type or reason'}
+                placeholder={activeTab === 'staff' ? 'Search staff by name, department or years' : activeTab === 'payouts' ? 'Search payouts by staff name or month' : activeTab === 'imported-staff' ? 'Search imported staff by name' : activeTab === 'duvet-logs' ? 'Search duvet logs by name, note or date' : 'Search requests by name, type or reason'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Search size={16} /> Search
+                Search
               </button>
               <button type="button" className="btn btn-secondary" onClick={handleClearSearch}>
                 Clear
@@ -462,16 +642,16 @@ const AdminDashboard = () => {
                           <button 
                             className="btn btn-success" 
                             style={{ padding: '0.25rem 0.5rem' }}
-                              onClick={() => updateLeaveStatus(request._id, 'approved')}
+                              onClick={() => handleUpdateLeaveStatus(request._id, 'approved')}
                           >
-                            <CheckCircle size={16} />
+                            Approve
                           </button>
                           <button 
                             className="btn btn-danger" 
                             style={{ padding: '0.25rem 0.5rem' }}
-                              onClick={() => updateLeaveStatus(request._id, 'rejected')}
+                              onClick={() => handleUpdateLeaveStatus(request._id, 'rejected')}
                           >
-                            <XCircle size={16} />
+                            Reject
                           </button>
                         </div>
                       )}
@@ -482,6 +662,37 @@ const AdminDashboard = () => {
                   <tr>
                     <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                       No leave requests match your search.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {activeTab === 'duvet-logs' && (
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Staff Member</th>
+                  <th>Date</th>
+                  <th>Note</th>
+                  <th>Created At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDuvetLogs.map(log => (
+                  <tr key={log._id}>
+                    <td style={{ fontWeight: 500 }}>{log.staffName || log.userId?.name || 'Unknown'}</td>
+                    <td>{log.date}</td>
+                    <td>{log.note || '-'}</td>
+                    <td>{log.createdAt ? new Date(log.createdAt).toLocaleDateString() : 'N/A'}</td>
+                  </tr>
+                ))}
+                {filteredDuvetLogs.length === 0 && (
+                  <tr>
+                    <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                      No duvet logs match your search.
                     </td>
                   </tr>
                 )}
@@ -541,7 +752,7 @@ const AdminDashboard = () => {
                       )}
                       {payout.status === 'approved' && (
                         <button 
-                          className="btn btn-info" 
+                          className="btn btn-secondary" 
                           style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                           onClick={() => updatePayoutStatus(payout._id, 'paid', payout.payoutAmount, payout.notes)}
                         >
@@ -650,7 +861,27 @@ const AdminDashboard = () => {
         {activeTab === 'imported-staff' && (
           <div>
             <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ marginBottom: '1rem' }}>Imported Staff Data from Excel</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3>Imported Staff Leave Data</h3>
+                {importedStaff.length > 0 && (
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={handleClearImportedStaff}
+                    >
+                      Clear Imported Data
+                    </button>
+                    <button 
+                      className="btn btn-success"
+                      onClick={handleCreateAccountsFromImported}
+                      disabled={selectedImportedStaff.size === 0 || isCreatingAccounts}
+                    >
+                      {isCreatingAccounts ? 'Creating Accounts...' : `Create Accounts (${selectedImportedStaff.size})`}
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {isLoadingImported ? (
                 <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   Loading imported staff data...
@@ -663,48 +894,228 @@ const AdminDashboard = () => {
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
                     <thead>
-                      <tr style={{ borderBottom: '2px solid var(--border-color)', backgroundColor: 'rgba(100, 150, 255, 0.1)' }}>
+                      <tr style={{ borderBottom: '2px solid var(--border-color)', backgroundColor: 'rgba(0, 0, 0, 0.04)' }}>
+                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold', width: '40px' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedImportedStaff.size === importedStaff.length && importedStaff.length > 0}
+                            onChange={handleSelectAllImportedStaff}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </th>
                         <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Staff Name</th>
-                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Holiday Entitlement Days</th>
-                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Service Years</th>
-                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Carry Over Days</th>
-                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Duvet Days Used</th>
-                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Last Updated</th>
+                        <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold' }}>Email</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>Holiday Entitlement</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>Carry Over Days</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>Days Taken So Far</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>Remaining Balance</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>Service Years</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>Duvet Days Used</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>Working</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 'bold' }}>Account Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredImportedStaff.map((staff, index) => (
+                      {importedStaff.map((staff, index) => (
                         <tr 
                           key={staff._id || index} 
                           style={{ 
                             borderBottom: '1px solid var(--border-color)',
-                            backgroundColor: index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'transparent'
+                            backgroundColor: index % 2 === 0 ? 'rgba(0, 0, 0, 0.02)' : 'transparent'
                           }}
                         >
                           <td style={{ padding: '1rem' }}>
-                            <strong>{staff.staffName || '-'}</strong>
+                            <input
+                              type="checkbox"
+                              checked={selectedImportedStaff.has(staff._id)}
+                              onChange={() => handleSelectImportedStaff(staff._id)}
+                              style={{ cursor: 'pointer' }}
+                            />
                           </td>
                           <td style={{ padding: '1rem' }}>
-                            {staff.holidayEntitlementDays !== undefined ? staff.holidayEntitlementDays : '-'}
+                            <strong>{toText(staff.staffName)}</strong>
                           </td>
                           <td style={{ padding: '1rem' }}>
-                            {staff.serviceYears !== undefined ? staff.serviceYears : '-'}
+                            {toText(staff.email)}
                           </td>
-                          <td style={{ padding: '1rem' }}>
-                            {staff.carryOverDays !== undefined ? staff.carryOverDays : '-'}
+                          <td style={{ padding: '1rem', textAlign: 'center' }}>
+                            {toNumber(staff.holidayEntitlementDays, 28)}
                           </td>
-                          <td style={{ padding: '1rem' }}>
-                            {staff.duvetDaysUsed !== undefined ? staff.duvetDaysUsed : '-'}
+                          <td style={{ padding: '1rem', textAlign: 'center' }}>
+                            {toNumber(staff.carryOverDays, 0)}
                           </td>
-                          <td style={{ padding: '1rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                            {staff.updatedAt ? new Date(staff.updatedAt).toLocaleDateString() : 'N/A'}
+                          <td style={{ padding: '1rem', textAlign: 'center' }}>
+                            {toNumber(staff.daysTakenSoFar, 0)}
+                          </td>
+                          <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 600 }}>
+                            {toNumber(staff.remainingBalance, toNumber(staff.holidayEntitlementDays, 28) + toNumber(staff.carryOverDays, 0) - toNumber(staff.daysTakenSoFar, 0))}
+                          </td>
+                          <td style={{ padding: '1rem', textAlign: 'center' }}>
+                            {toNumber(staff.serviceYears, 0)}
+                          </td>
+                          <td style={{ padding: '1rem', textAlign: 'center' }}>
+                            {toNumber(staff.duvetDaysUsed, 0)}
+                          </td>
+                          <td style={{ padding: '1rem', textAlign: 'center' }}>
+                            <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <input
+                                type="checkbox"
+                                checked={Boolean(staff.isWorking)}
+                                onChange={async (e) => {
+                                  const newVal = e.target.checked;
+                                  // optimistic update
+                                  setImportedStaff(prev => prev.map(p => p._id === staff._id ? { ...p, isWorking: newVal } : p));
+                                  try {
+                                    const resp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/imported-staff/${staff._id}/working`, {
+                                      method: 'PUT',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                        ...(token ? { Authorization: `Bearer ${token}` } : {})
+                                      },
+                                      body: JSON.stringify({ isWorking: newVal })
+                                    });
+                                    if (!resp.ok) {
+                                      throw new Error('Failed to update status');
+                                    }
+                                    const body = await resp.json();
+                                    if (body && body.data) {
+                                      // sync returned record
+                                      setImportedStaff(prev => prev.map(p => p._id === staff._id ? body.data : p));
+                                    }
+                                  } catch (err) {
+                                    // revert on error
+                                    setImportedStaff(prev => prev.map(p => p._id === staff._id ? { ...p, isWorking: staff.isWorking } : p));
+                                    alert(err.message || 'Failed to update working status');
+                                  }
+                                }}
+                              />
+                              <span style={{ fontSize: '0.85rem' }}>{staff.isWorking ? 'Yes' : 'No'}</span>
+                            </label>
+                          </td>
+                          <td style={{ padding: '1rem', textAlign: 'center' }}>
+                            <span className={`badge ${staff.accountCreated ? 'badge-approved' : 'badge-pending'}`}>
+                              {staff.accountCreated ? 'Created' : 'Pending'}
+                            </span>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(100, 150, 255, 0.1)', borderRadius: 'var(--radius-sm)' }}>
-                    <strong>Total Records:</strong> {importedStaff.length}
+                  <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(0, 0, 0, 0.04)', borderRadius: 'var(--radius-sm)' }}>
+                    <strong>Total Records:</strong> {importedStaff.length} | <strong>Selected:</strong> {selectedImportedStaff.size}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Account Creation Result Modal */}
+        {accountCreationResult && (
+          <div className="modal-overlay active">
+            <div className="modal">
+              <div className="modal-header">
+                <h3>{accountCreationResult.success ? '✓ Accounts Created Successfully' : '✗ Account Creation Failed'}</h3>
+                <button className="close-btn" onClick={() => setAccountCreationResult(null)}>&times;</button>
+              </div>
+              
+              {accountCreationResult.success ? (
+                <div className="stacked-form">
+                  <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(0, 0, 0, 0.04)', borderRadius: 'var(--radius-sm)' }}>
+                    <p style={{ marginBottom: '0.5rem' }}>
+                      <strong>✓ Created:</strong> {accountCreationResult.created} accounts
+                    </p>
+                    <p style={{ marginBottom: '0.5rem' }}>
+                      <strong>⚠ Already Exists:</strong> {accountCreationResult.alreadyExists} accounts
+                    </p>
+                    {accountCreationResult.failed > 0 && (
+                      <p style={{ marginBottom: '0' }}>
+                        <strong>✗ Failed:</strong> {accountCreationResult.failed} accounts
+                      </p>
+                    )}
+                  </div>
+
+                  <div style={{ padding: '1.5rem', backgroundColor: 'rgba(0, 0, 0, 0.04)', borderRadius: 'var(--radius-sm)', border: '2px solid #000000', marginBottom: '1.5rem' }}>
+                    <h4 style={{ marginBottom: '1rem', color: '#000000' }}>📋 Temporary Password for All Staff</h4>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '0.5rem' }}>
+                      <input 
+                        type="text" 
+                        value={accountCreationResult.tempPassword} 
+                        readOnly 
+                        style={{ 
+                          flex: 1, 
+                          padding: '0.75rem', 
+                          fontSize: '1.1rem', 
+                          fontWeight: 'bold', 
+                          border: '1px solid #000000',
+                          borderRadius: '0.5rem',
+                          textAlign: 'center'
+                        }}
+                      />
+                      <button 
+                        className="btn btn-secondary"
+                        onClick={() => {
+                          navigator.clipboard.writeText(accountCreationResult.tempPassword);
+                          alert('Password copied to clipboard!');
+                        }}
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                      ⚠️ Share this password with all newly created staff. They should change it on first login.
+                    </p>
+                  </div>
+
+                  {accountCreationResult.createdAccounts?.length > 0 && (
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <h4 style={{ marginBottom: '0.75rem' }}>Created Credentials</h4>
+                      <div style={{ overflowX: 'auto', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '0.75rem' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
+                          <thead>
+                            <tr style={{ backgroundColor: 'rgba(0,0,0,0.03)', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                              <th style={{ textAlign: 'left', padding: '0.75rem' }}>Name</th>
+                              <th style={{ textAlign: 'left', padding: '0.75rem' }}>Email</th>
+                              <th style={{ textAlign: 'left', padding: '0.75rem' }}>Password</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {accountCreationResult.createdAccounts.map((account, index) => (
+                              <tr key={`${account.email}-${index}`} style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                                <td style={{ padding: '0.75rem' }}>{account.name || '-'}</td>
+                                <td style={{ padding: '0.75rem' }}>{account.email || '-'}</td>
+                                <td style={{ padding: '0.75rem', fontWeight: 600 }}>{account.password}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                    <button 
+                      type="button" 
+                      className="btn btn-primary"
+                      onClick={() => setAccountCreationResult(null)}
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="stacked-form">
+                  <p style={{ color: '#000000', marginBottom: '1.5rem' }}>
+                    {accountCreationResult.message}
+                  </p>
+                  <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary"
+                      onClick={() => setAccountCreationResult(null)}
+                    >
+                      Close
+                    </button>
                   </div>
                 </div>
               )}

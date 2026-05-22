@@ -2,6 +2,25 @@ import { createContext, useEffect, useState } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+const readResponseBody = async (response) => {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    try {
+      return await response.json();
+    } catch (error) {
+      return {};
+    }
+  }
+
+  try {
+    const text = await response.text();
+    return text ? { message: text } : {};
+  } catch (error) {
+    return {};
+  }
+};
+
 // eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext();
 
@@ -40,9 +59,10 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, password })
       });
 
-      const data = await response.json();
+      const data = await readResponseBody(response);
 
       if (!response.ok) {
+        console.error('Login failed:', response.status, data);
         return false;
       }
 
@@ -121,6 +141,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const fetchProfile = async () => {
+    if (!token || !user) return;
+    try {
+      const endpoint = user.role === 'admin' ? `${API_URL}/api/admin/staff` : `${API_URL}/api/staff/profile`;
+      const response = await fetch(endpoint, {
+        headers: authHeaders()
+      });
+      if (handleUnauthorized(response) || !response.ok) return;
+      const data = await response.json();
+
+      if (user.role === 'staff') {
+        const nextUser = data.user || data;
+        setUser(nextUser);
+        localStorage.setItem('attendx_user', JSON.stringify(nextUser));
+      }
+    } catch (error) {
+      console.error('Fetch profile error:', error);
+    }
+  };
+
   const fetchHolidayPayouts = async () => {
     if (!token) return;
     try {
@@ -184,6 +224,7 @@ export const AuthProvider = ({ children }) => {
         fetchDuvetLogs();
         fetchHolidayPayouts();
       } else if (user.role === 'staff') {
+        fetchProfile();
         fetchStaffLeaveRequests();
         fetchDuvetLogs();
         fetchHolidayPayouts();
@@ -212,22 +253,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   const requestLeave = async (requestData) => {
-    // If duvet day, call duvet-day endpoint which immediately logs the duvet day
     if (requestData.type === 'Duvet Day') {
       try {
         const response = await fetch(`${API_URL}/api/staff/duvet-day`, {
           method: 'POST',
           headers: authHeaders(),
-          body: JSON.stringify({ date: requestData.date, note: requestData.reason })
+          body: JSON.stringify({
+            date: requestData.date,
+            note: requestData.reason
+          })
         });
         const data = await response.json().catch(() => ({}));
         if (handleUnauthorized(response)) {
           return { success: false, message: 'Session expired. Please sign in again.' };
         }
         if (response.ok) {
-          // refresh lists
+          await fetchProfile();
           await fetchDuvetLogs();
-          await fetchStaffLeaveRequests();
           return { success: true };
         }
         return { success: false, message: data?.message || data?.msg || 'Duvet day failed' };
@@ -256,7 +298,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: 'Session expired. Please sign in again.' };
       }
       if (response.ok) {
-        // refresh staff view
+        await fetchProfile();
         await fetchStaffLeaveRequests();
         return { success: true };
       }
@@ -267,24 +309,40 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateLeaveStatus = (requestId, status) => {
+  const updateLeaveStatus = async (requestId, status) => {
     setLeaveRequests(leaveRequests.map(req => 
       req._id === requestId ? { ...req, status } : req
     ));
 
-    // Call backend to persist ALL status changes
-    fetch(`${API_URL}/api/admin/holiday-requests/update-status`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ requestId, status })
-    }).then(response => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/holiday-requests/update-status`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ requestId, status })
+      });
+
       if (handleUnauthorized(response)) {
-        return;
+        return { success: false, message: 'Session expired. Please sign in again.' };
       }
+
       if (!response.ok) {
         console.error('Update status error:', response.status);
+        return { success: false, message: 'Failed to update request' };
       }
-    }).catch(err => console.error('Update status error:', err));
+
+      await fetchUsers();
+      await fetchLeaveRequests();
+      await fetchDuvetLogs();
+      if (user?.role === 'staff') {
+        await fetchProfile();
+        await fetchStaffLeaveRequests();
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.error('Update status error:', err);
+      return { success: false, message: 'Network or server error' };
+    }
   };
 
   return (
@@ -302,7 +360,8 @@ export const AuthProvider = ({ children }) => {
       updatePayoutStatus
       ,
       duvetLogs,
-      fetchDuvetLogs
+      fetchDuvetLogs,
+      fetchProfile
     }}>
       {children}
     </AuthContext.Provider>

@@ -2,13 +2,45 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+const escapeRegExp = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const buildNameRegex = (value) => {
+  const normalized = String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ');
+
+  if (!normalized) {
+    return null;
+  }
+
+  const escaped = escapeRegExp(normalized).replace(/\s+/g, '\\s+');
+  return new RegExp(`^\\s*${escaped}\\s*$`, 'i');
+};
+
 // LOGIN
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const identifier = String(email || '').trim();
+    const normalizedIdentifier = identifier.toLowerCase();
 
-    // CHECK USER
-    const user = await User.findOne({ email });
+    // CHECK USER - by email or name
+    let user = await User.findOne({
+      $or: [
+        { email: identifier },
+        { name: identifier } // Allow login with name as well
+      ]
+    });
+
+    if (!user && identifier) {
+      const nameRegex = buildNameRegex(identifier);
+      user = await User.findOne({
+        $or: [
+          { email: new RegExp(`^${escapeRegExp(normalizedIdentifier)}$`, 'i') },
+          ...(nameRegex ? [{ name: nameRegex }] : [])
+        ]
+      });
+    }
 
     if (!user) {
       return res.status(400).json({

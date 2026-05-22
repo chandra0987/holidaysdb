@@ -162,10 +162,10 @@ p { line-height: 1.6; color: var(--text-muted); }
 
 .staff-card,
 .card {
-  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(244,246,255,0.95));
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(243,243,243,0.98));
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 24px;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.08);
   padding: 1.5rem;
 }
 
@@ -390,9 +390,9 @@ textarea.form-control {
 }
 
 .badge-approved {
-  background-color: var(--primary);
+  background-color: var(--text-main);
   color: white;
-  border-color: var(--primary);
+  border-color: var(--text-main);
 }
 
 .badge-rejected {
@@ -647,10 +647,10 @@ textarea.form-control {
 
 .atm-card {
   position: relative;
-  background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
-  color: #f8fafc;
+  background: linear-gradient(135deg, #111111 0%, #2b2b2b 100%);
+  color: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.32);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
   overflow: hidden;
 }
 
@@ -667,7 +667,7 @@ textarea.form-control {
   height: 180px;
   top: -40px;
   right: -40px;
-  background: rgba(59, 130, 246, 0.4);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .atm-card::after {
@@ -675,7 +675,7 @@ textarea.form-control {
   height: 120px;
   bottom: -30px;
   left: -30px;
-  background: rgba(14, 165, 233, 0.24);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .atm-card .stat-header,
@@ -685,7 +685,7 @@ textarea.form-control {
 }
 
 .atm-card .stat-header {
-  color: rgba(248, 250, 252, 0.7);
+  color: rgba(255, 255, 255, 0.76);
 }
 
 .atm-card .stat-value {
@@ -790,12 +790,12 @@ textarea.form-control {
 }
 
 .staff-card {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.98));
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(242,242,242,0.98));
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 24px;
   padding: 1.5rem;
-  color: white;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+  color: #000000;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
 }
 
 .staff-card-top {
@@ -807,7 +807,7 @@ textarea.form-control {
 }
 
 .staff-card-label {
-  color: rgba(226, 232, 240, 0.7);
+  color: rgba(0, 0, 0, 0.72);
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -837,18 +837,18 @@ textarea.form-control {
 }
 
 .staff-card-value.normal {
-  color: #cbd5e1;
+  color: #1f1f1f;
 }
 
 .staff-card-value.overdue {
-  color: #fecaca;
+  color: #000000;
 }
 
 .staff-card-meta {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  color: rgba(226, 232, 240, 0.74);
+  color: rgba(0, 0, 0, 0.72);
   font-size: 0.9rem;
 }
 
@@ -906,6 +906,11 @@ tbody tr:hover {
   pointer-events: all;
 }
 
+.leave-request-overlay {
+  align-items: flex-start;
+  padding-top: 4rem;
+}
+
 .modal {
   width: 100%;
   max-width: 500px;
@@ -917,6 +922,18 @@ tbody tr:hover {
   border-radius: 24px;
   max-height: 90vh;
   overflow-y: auto;
+}
+
+.leave-request-modal {
+  padding: 1.5rem;
+}
+
+.leave-request-modal .stacked-form {
+  margin-top: 0;
+}
+
+.leave-request-modal .stacked-form .form-group:last-of-type {
+  margin-bottom: 0;
 }
 
 .modal-overlay.active .modal {

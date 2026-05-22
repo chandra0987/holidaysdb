@@ -13,7 +13,10 @@ const {
   getHolidayRequests,
   updateHolidayRequestStatus,
   getDuvetLogs,
-  exportPayrollCSV
+  exportPayrollCSV,
+  getImportedStaffLeave,
+  createAccountsFromImportedStaff,
+  clearImportedStaffLeave
 } = require("../controllers/adminController");
 
 // IMPORT AUTH MIDDLEWARE
@@ -142,6 +145,38 @@ router.post(
         message: error.message
       });
     }
+  }
+);
+
+// GET IMPORTED STAFF LEAVE DATA
+router.get(
+  "/imported-staff-leave",
+  auth,
+  getImportedStaffLeave
+);
+
+// CREATE ACCOUNTS FROM IMPORTED STAFF
+router.post(
+  "/create-accounts-from-imported",
+  auth,
+  createAccountsFromImportedStaff
+);
+
+// CLEAR ALL IMPORTED STAFF LEAVE DATA
+router.delete(
+  "/imported-staff-leave",
+  auth,
+  clearImportedStaffLeave
+);
+
+// UPDATE IMPORTED STAFF WORKING STATUS
+router.put(
+  "/imported-staff/:id/working",
+  auth,
+  async (req, res, next) => {
+    // forward to controller method
+    const controller = require('../controllers/adminController');
+    return controller.updateImportedStaffWorking(req, res, next);
   }
 );
 

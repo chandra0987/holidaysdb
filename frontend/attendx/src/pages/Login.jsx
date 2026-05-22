@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { LogIn, AlertCircle } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -48,8 +47,8 @@ const Login = () => {
 
           {error && (
             <div style={{ 
-              backgroundColor: 'rgba(239, 68, 68, 0.2)', 
-              color: 'var(--danger)', 
+              backgroundColor: 'rgba(0, 0, 0, 0.08)', 
+              color: 'var(--text-main)', 
               padding: '1rem', 
               borderRadius: 'var(--radius-sm)',
               marginBottom: '1.5rem',
@@ -57,20 +56,19 @@ const Login = () => {
               alignItems: 'center',
               gap: '0.5rem'
             }}>
-              <AlertCircle size={20} />
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">Email Address</label>
+              <label className="form-label">Email Address or Name</label>
               <input
-                type="email"
+                type="text"
                 className="form-control"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
+                placeholder="Enter your email or full name"
               />
             </div>
             <div className="form-group">
@@ -85,7 +83,7 @@ const Login = () => {
             </div>
             
             <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
-              <LogIn size={20} /> Sign In
+              Sign In
             </button>
             
           </form>

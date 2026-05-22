@@ -80,6 +80,10 @@ const uploadStaffLeaveData = async (req, res) => {
 
       // Only save rows that have a staff name
       if (record.staffName && record.staffName.toString().trim() !== '') {
+        record.staffName = record.staffName.toString().trim();
+        if (record.email !== null && record.email !== undefined) {
+          record.email = record.email.toString().trim();
+        }
         records.push(record);
       } else {
         console.log(`Row ${rowNumber} skipped: No valid staffName`);
