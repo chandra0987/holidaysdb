@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Calendar, Clock, AlertTriangle, CheckCircle, Send } from 'lucide-react';
 
 const StaffDashboard = () => {
   const { user, leaveRequests, requestLeave, duvetLogs, fetchProfile } = useAuth();
@@ -19,6 +18,7 @@ const StaffDashboard = () => {
   const [leaveType, setLeaveType] = useState('Regular');
   const [leaveReason, setLeaveReason] = useState('');
   const [leaveDays, setLeaveDays] = useState('1');
+  const today = new Date().toISOString().split('T')[0];
 
   // Toast state
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
@@ -82,7 +82,7 @@ const StaffDashboard = () => {
       setLeaveType('Regular');
       setLeaveReason('');
       setLeaveDays('1');
-      showToast('Leave request submitted successfully!');
+      showToast('Your submission is completed. Admin will review it.');
     } else {
       showToast(result?.message || 'Failed to submit request', 'error');
     }
@@ -117,10 +117,10 @@ const StaffDashboard = () => {
         <h2>Welcome, {currentUser.name || 'Staff Member'}</h2>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-            <Calendar size={18} /> Request Leave
+            Request Leave
           </button>
           <button className="btn btn-secondary" onClick={() => navigate('/staff/holiday-request')}>
-            <Calendar size={18} /> Holiday Payment
+            Holiday Payment
           </button>
         </div>
       </div>
@@ -128,7 +128,6 @@ const StaffDashboard = () => {
       <div className="dashboard-grid full-width">
         <div className="glass-panel stat-card">
           <div className="stat-header">
-            <div className="stat-icon blue"><Calendar size={24} /></div>
             <h3>Holiday Entitlement</h3>
           </div>
           <div className="stat-value">{holidayEntitlement}</div>
@@ -137,7 +136,6 @@ const StaffDashboard = () => {
 
         <div className="glass-panel stat-card">
           <div className="stat-header">
-            <div className="stat-icon blue"><Calendar size={24} /></div>
             <h3>Carry Over Days</h3>
           </div>
           <div className="stat-value">{carryOver}</div>
@@ -146,7 +144,6 @@ const StaffDashboard = () => {
 
         <div className="glass-panel stat-card">
           <div className="stat-header">
-            <div className="stat-icon orange"><AlertTriangle size={24} /></div>
             <h3>Days Taken So Far</h3>
           </div>
           <div className="stat-value">{daysTaken}</div>
@@ -155,16 +152,14 @@ const StaffDashboard = () => {
 
         <div className="glass-panel stat-card">
           <div className="stat-header">
-            <div className={`stat-icon ${remainingBalance < 0 ? '' : 'green'}`} style={{ backgroundColor: remainingBalance < 0 ? '#f44336' : undefined }}><CheckCircle size={24} /></div>
             <h3>Remaining Balance</h3>
           </div>
-          <div className="stat-value" style={{ color: remainingBalance < 0 ? '#f44336' : '#4CAF50' }}>{remainingBalance}</div>
+          <div className="stat-value" style={{ color: '#000000' }}>{remainingBalance}</div>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Dynamically calculated</div>
         </div>
 
         <div className="glass-panel stat-card">
           <div className="stat-header">
-            <div className="stat-icon orange"><Clock size={24} /></div>
             <h3>Working Status</h3>
           </div>
           <div className="stat-value">{currentUser.isWorking ? 'Working' : 'Not Working'}</div>
@@ -175,7 +170,6 @@ const StaffDashboard = () => {
       <div className="dashboard-grid full-width">
         <div className="glass-panel stat-card">
           <div className="stat-header">
-            <div className="stat-icon blue"><Clock size={24} /></div>
             <h3>Total Working Days</h3>
           </div>
           <div className="stat-value">{currentUser.totalDays || 0}</div>
@@ -183,7 +177,6 @@ const StaffDashboard = () => {
         
         <div className="glass-panel stat-card">
           <div className="stat-header">
-            <div className="stat-icon green"><CheckCircle size={24} /></div>
             <h3>Present Days</h3>
           </div>
           <div className="stat-value">{currentUser.presentDays || 0}</div>
@@ -191,7 +184,6 @@ const StaffDashboard = () => {
 
         <div className="glass-panel stat-card">
           <div className="stat-header">
-            <div className="stat-icon orange"><AlertTriangle size={24} /></div>
             <h3>Leave Days (approved)</h3>
           </div>
           <div className="stat-value">{approvedLeaveDays}</div>
@@ -199,7 +191,6 @@ const StaffDashboard = () => {
 
         <div className="glass-panel stat-card">
           <div className="stat-header">
-            <div className="stat-icon"><AlertTriangle size={24} /></div>
             <h3>Duvet Days Logged</h3>
           </div>
           <div className="stat-value">{duvetDaysCount}</div>
@@ -207,7 +198,6 @@ const StaffDashboard = () => {
 
         <div className="glass-panel stat-card">
           <div className="stat-header">
-            <div className="stat-icon"><AlertTriangle size={24} /></div>
             <h3>Duvet Remaining</h3>
           </div>
           <div className="stat-value">{duvetDaysRemaining}</div>
@@ -278,8 +268,8 @@ const StaffDashboard = () => {
       </div>
 
       {/* Leave Request Modal */}
-      <div className={`modal-overlay ${isModalOpen ? 'active' : ''}`}>
-        <div className="modal">
+      <div className={`modal-overlay leave-request-overlay ${isModalOpen ? 'active' : ''}`}>
+        <div className="modal leave-request-modal">
           <div className="modal-header">
             <h3>Request Leave</h3>
             <button className="close-btn" onClick={() => setIsModalOpen(false)}>&times;</button>
@@ -294,7 +284,7 @@ const StaffDashboard = () => {
                 value={leaveDate}
                 onChange={(e) => setLeaveDate(e.target.value)}
                 required
-                min={new Date().toISOString().split('T')[0]}
+                min={leaveType === 'Duvet Day' ? today : undefined}
               />
             </div>
             <div className="form-group">
@@ -348,7 +338,7 @@ const StaffDashboard = () => {
                 Cancel
               </button>
               <button type="submit" className="btn btn-primary">
-                <Send size={18} /> Submit Request
+                Submit Request
               </button>
             </div>
           </form>

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Loader2, ShieldCheck, UserPlus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -112,7 +111,7 @@ const AdminRegister = () => {
       className="auth-page"
       style={{
         background:
-          'radial-gradient(circle at top left, rgba(255,255,255,0.95), rgba(237,242,247,1) 45%, rgba(226,232,240,1) 100%)'
+          'radial-gradient(circle at top left, rgba(255,255,255,0.98), rgba(245,245,245,1) 45%, rgba(230,230,230,1) 100%)'
       }}
     >
       <div className="auth-container" style={{ maxWidth: '960px' }}>
@@ -127,7 +126,6 @@ const AdminRegister = () => {
         >
           <div style={{ padding: '0.25rem 0' }}>
             <div className="logo" style={{ marginBottom: '1.5rem' }}>
-              <ShieldCheck size={28} color="var(--primary)" />
               AttendX Admin
             </div>
             <h1 style={{ marginBottom: '1rem' }}>Create the first admin account</h1>
@@ -136,19 +134,12 @@ const AdminRegister = () => {
             </p>
 
             <div style={{ display: 'grid', gap: '0.9rem', marginTop: '2rem' }}>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                <UserPlus size={18} style={{ flexShrink: 0, marginTop: '0.2rem' }} />
-                <span style={{ color: 'var(--text-muted)' }}>Simple setup for internal admin onboarding.</span>
-              </div>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                <ShieldCheck size={18} style={{ flexShrink: 0, marginTop: '0.2rem' }} />
-                <span style={{ color: 'var(--text-muted)' }}>Creates the account with the admin role automatically.</span>
-              </div>
+              <div style={{ color: 'var(--text-muted)' }}>Simple setup for internal admin onboarding.</div>
+              <div style={{ color: 'var(--text-muted)' }}>Creates the account with the admin role automatically.</div>
             </div>
 
             <div style={{ marginTop: '2rem' }}>
               <Link to="/admin-login" style={{ color: 'var(--primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
-                <ArrowLeft size={16} />
                 Back to admin login
               </Link>
               <div style={{ marginTop: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
@@ -161,8 +152,8 @@ const AdminRegister = () => {
             {error && (
               <div
                 style={{
-                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                  color: 'var(--danger)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                  color: 'var(--text-main)',
                   padding: '1rem',
                   borderRadius: 'var(--radius-sm)',
                   marginBottom: '1.25rem',
@@ -171,7 +162,6 @@ const AdminRegister = () => {
                   gap: '0.5rem'
                 }}
               >
-                <AlertCircle size={20} />
                 {error}
               </div>
             )}
@@ -179,8 +169,8 @@ const AdminRegister = () => {
             {success && (
               <div
                 style={{
-                  backgroundColor: 'rgba(34, 197, 94, 0.12)',
-                  color: 'var(--primary)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.06)',
+                  color: 'var(--text-main)',
                   padding: '1rem',
                   borderRadius: 'var(--radius-sm)',
                   marginBottom: '1.25rem'
@@ -247,12 +237,10 @@ const AdminRegister = () => {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 size={18} className="spin" /> Creating account...
+                    Creating account...
                   </>
                 ) : (
-                  <>
-                    <ShieldCheck size={18} /> Create Admin Account
-                  </>
+                  <>Create Admin Account</>
                 )}
               </button>
             </form>

@@ -161,7 +161,7 @@ const HolidayRequest = () => {
             fontWeight: 'bold',
             textAlign: 'center',
             padding: '0.75rem',
-            backgroundColor: '#f0f0f0',
+            backgroundColor: '#f2f2f2',
             borderRadius: '10px',
         },
         title: {
@@ -176,8 +176,8 @@ const HolidayRequest = () => {
             borderRadius: '10px',
             textAlign: 'center',
             fontWeight: '500',
-            backgroundColor: message.includes('Error') || message.includes('Network') ? '#ffe0e0' : '#e0ffe0',
-            color: message.includes('Error') || message.includes('Network') ? '#c00' : '#060',
+            backgroundColor: message.includes('Error') || message.includes('Network') ? '#ececec' : '#f5f5f5',
+            color: '#000000',
         }
     };
 

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { LogIn, AlertCircle, ShieldCheck } from 'lucide-react';
 
 const AdminLogin = () => {
   const [email, setEmail] = useState('');
@@ -57,17 +56,14 @@ const AdminLogin = () => {
       <div className="auth-container">
         <div className="glass-panel">
           <div className="auth-header">
-            <div className="logo" style={{ justifyContent: 'center', marginBottom: '1rem', gap: '0.75rem' }}>
-              <ShieldCheck size={32} color="var(--primary)" />
-              <span>Admin Access</span>
-            </div>
+            <div className="logo" style={{ justifyContent: 'center', marginBottom: '1rem' }}>Admin Access</div>
             <p>Only admin credentials can be used here. Staff should use the staff login page.</p>
           </div>
 
           {error && (
             <div style={{ 
-              backgroundColor: 'rgba(239, 68, 68, 0.2)', 
-              color: 'var(--danger)', 
+              backgroundColor: 'rgba(0, 0, 0, 0.08)', 
+              color: 'var(--text-main)', 
               padding: '1rem', 
               borderRadius: 'var(--radius-sm)',
               marginBottom: '1.5rem',
@@ -75,7 +71,6 @@ const AdminLogin = () => {
               alignItems: 'center',
               gap: '0.5rem'
             }}>
-              <AlertCircle size={20} />
               {error}
             </div>
           )}
@@ -103,7 +98,7 @@ const AdminLogin = () => {
             </div>
             
             <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
-              <LogIn size={20} /> Sign In with Admin Credentials
+              Sign In with Admin Credentials
             </button>
 
             <div style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.875rem' }}>

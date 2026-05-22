@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { Users, UserPlus, CheckCircle, XCircle, Calendar, Download, Search, Upload } from 'lucide-react';
 
 const AdminDashboard = () => {
   const { users, leaveRequests, holidayPayouts, duvetLogs, createStaff, updateLeaveStatus, updatePayoutStatus, fetchDuvetLogs, token } = useAuth();
@@ -447,7 +446,7 @@ const AdminDashboard = () => {
                   onClick={() => fileInputRef.current?.click()} 
                   disabled={isUploading}
                 >
-                  <Upload size={18} /> {isUploading ? 'Importing...' : 'Import Staff'}
+                  {isUploading ? 'Importing...' : 'Import Staff'}
                 </button>
                 <input
                   ref={fileInputRef}
@@ -459,7 +458,7 @@ const AdminDashboard = () => {
               </>
             )}
             <button className="btn btn-secondary" onClick={exportToCSV} disabled={isExporting}>
-              <Download size={18} /> {isExporting ? 'Exporting...' : 'Export CSV'}
+              {isExporting ? 'Exporting...' : 'Export CSV'}
             </button>
           </div>
         )}
@@ -468,7 +467,6 @@ const AdminDashboard = () => {
       <div className="dashboard-grid">
         <div className="glass-panel stat-card atm-card">
           <div className="stat-header">
-            <div className="stat-icon blue"><Users size={24} /></div>
             <h3>Total Staff</h3>
           </div>
           <div className="stat-value">{staffMembers.length}</div>
@@ -476,7 +474,6 @@ const AdminDashboard = () => {
         
         <div className="glass-panel stat-card atm-card">
           <div className="stat-header">
-            <div className="stat-icon orange"><Calendar size={24} /></div>
             <h3>Pending Leaves</h3>
           </div>
           <div className="stat-value">
@@ -486,7 +483,6 @@ const AdminDashboard = () => {
 
         <div className="glass-panel stat-card atm-card">
           <div className="stat-header">
-            <div className="stat-icon purple"><Calendar size={24} /></div>
             <h3>Pending Payouts</h3>
           </div>
           <div className="stat-value">
@@ -496,7 +492,6 @@ const AdminDashboard = () => {
 
         <div className="glass-panel stat-card atm-card">
           <div className="stat-header">
-            <div className="stat-icon green"><Users size={24} /></div>
             <h3>Departments</h3>
           </div>
           <div className="stat-value">
@@ -535,7 +530,6 @@ const AdminDashboard = () => {
             className={`auth-tab ${activeTab === 'new-staff' ? 'active' : ''}`}
             onClick={() => setActiveTab('new-staff')}
           >
-            <UserPlus size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'text-bottom' }} />
             Add Staff
           </div>
           <div 
@@ -557,7 +551,7 @@ const AdminDashboard = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Search size={16} /> Search
+                Search
               </button>
               <button type="button" className="btn btn-secondary" onClick={handleClearSearch}>
                 Clear
@@ -649,14 +643,14 @@ const AdminDashboard = () => {
                             style={{ padding: '0.25rem 0.5rem' }}
                               onClick={() => handleUpdateLeaveStatus(request._id, 'approved')}
                           >
-                            <CheckCircle size={16} />
+                            Approve
                           </button>
                           <button 
                             className="btn btn-danger" 
                             style={{ padding: '0.25rem 0.5rem' }}
                               onClick={() => handleUpdateLeaveStatus(request._id, 'rejected')}
                           >
-                            <XCircle size={16} />
+                            Reject
                           </button>
                         </div>
                       )}
@@ -757,7 +751,7 @@ const AdminDashboard = () => {
                       )}
                       {payout.status === 'approved' && (
                         <button 
-                          className="btn btn-info" 
+                          className="btn btn-secondary" 
                           style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                           onClick={() => updatePayoutStatus(payout._id, 'paid', payout.payoutAmount, payout.notes)}
                         >
@@ -899,7 +893,7 @@ const AdminDashboard = () => {
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
                     <thead>
-                      <tr style={{ borderBottom: '2px solid var(--border-color)', backgroundColor: 'rgba(100, 150, 255, 0.1)' }}>
+                      <tr style={{ borderBottom: '2px solid var(--border-color)', backgroundColor: 'rgba(0, 0, 0, 0.04)' }}>
                         <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 'bold', width: '40px' }}>
                           <input 
                             type="checkbox" 
@@ -926,7 +920,7 @@ const AdminDashboard = () => {
                           key={staff._id || index} 
                           style={{ 
                             borderBottom: '1px solid var(--border-color)',
-                            backgroundColor: index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'transparent'
+                            backgroundColor: index % 2 === 0 ? 'rgba(0, 0, 0, 0.02)' : 'transparent'
                           }}
                         >
                           <td style={{ padding: '1rem' }}>
@@ -1006,7 +1000,7 @@ const AdminDashboard = () => {
                       ))}
                     </tbody>
                   </table>
-                  <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(100, 150, 255, 0.1)', borderRadius: 'var(--radius-sm)' }}>
+                  <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(0, 0, 0, 0.04)', borderRadius: 'var(--radius-sm)' }}>
                     <strong>Total Records:</strong> {importedStaff.length} | <strong>Selected:</strong> {selectedImportedStaff.size}
                   </div>
                 </div>
@@ -1026,7 +1020,7 @@ const AdminDashboard = () => {
               
               {accountCreationResult.success ? (
                 <div className="stacked-form">
-                  <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(76, 175, 80, 0.1)', borderRadius: 'var(--radius-sm)' }}>
+                  <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(0, 0, 0, 0.04)', borderRadius: 'var(--radius-sm)' }}>
                     <p style={{ marginBottom: '0.5rem' }}>
                       <strong>✓ Created:</strong> {accountCreationResult.created} accounts
                     </p>
@@ -1040,9 +1034,9 @@ const AdminDashboard = () => {
                     )}
                   </div>
 
-                  <div style={{ padding: '1.5rem', backgroundColor: 'rgba(255, 193, 7, 0.15)', borderRadius: 'var(--radius-sm)', border: '2px solid #FFC107', marginBottom: '1.5rem' }}>
-                    <h4 style={{ marginBottom: '1rem', color: '#FF9800' }}>📋 Temporary Password for All Staff</h4>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', backgroundColor: 'rgba(255, 255, 255, 0.8)', borderRadius: '0.5rem' }}>
+                  <div style={{ padding: '1.5rem', backgroundColor: 'rgba(0, 0, 0, 0.04)', borderRadius: 'var(--radius-sm)', border: '2px solid #000000', marginBottom: '1.5rem' }}>
+                    <h4 style={{ marginBottom: '1rem', color: '#000000' }}>📋 Temporary Password for All Staff</h4>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '0.5rem' }}>
                       <input 
                         type="text" 
                         value={accountCreationResult.tempPassword} 
@@ -1052,7 +1046,7 @@ const AdminDashboard = () => {
                           padding: '0.75rem', 
                           fontSize: '1.1rem', 
                           fontWeight: 'bold', 
-                          border: '1px solid #FFC107',
+                          border: '1px solid #000000',
                           borderRadius: '0.5rem',
                           textAlign: 'center'
                         }}
@@ -1110,7 +1104,7 @@ const AdminDashboard = () => {
                 </div>
               ) : (
                 <div className="stacked-form">
-                  <p style={{ color: '#f44336', marginBottom: '1.5rem' }}>
+                  <p style={{ color: '#000000', marginBottom: '1.5rem' }}>
                     {accountCreationResult.message}
                   </p>
                   <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
