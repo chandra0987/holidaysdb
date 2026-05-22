@@ -23,6 +23,11 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   }
+  ,
+  isWorking: {
+    type: Boolean,
+    default: true
+  }
 });
 
 module.exports = mongoose.model("User", userSchema);

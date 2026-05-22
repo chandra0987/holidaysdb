@@ -4,11 +4,28 @@ const User = require("../models/User");
 const DuvetDay = require("../models/Day");
 const HolidayRequest = require("../models/HolidayRequest");
 const HolidayPayout = require("../models/HolidayPayout");
+const StaffLeave = require("../models/StaffLeave");
 const { createHolidayRequest } = require("../controllers/staffControlller");
+
+const toNumber = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 
 router.get("/profile", auth, async (req, res) => {
   const user = await User.findById(req.user.id);
-  const remainingBalance = user.holidayEntitlement + user.carryOver - user.daysTaken;
+  const importedStaff = await StaffLeave.findOne({
+    $or: [
+      { userId: user?._id },
+      { email: user?.email },
+      { staffName: user?.name }
+    ]
+  });
+
+  const holidayEntitlement = toNumber(user?.holidayEntitlement, toNumber(importedStaff?.holidayEntitlementDays, 28));
+  const carryOver = toNumber(user?.carryOver, toNumber(importedStaff?.carryOverDays, 0));
+  const daysTaken = toNumber(user?.daysTaken, toNumber(importedStaff?.daysTakenSoFar, 0));
+  const remainingBalance = holidayEntitlement + carryOver - daysTaken;
 
   // compute duvet days used in current calendar year
   const now = new Date();
@@ -18,10 +35,15 @@ router.get("/profile", auth, async (req, res) => {
 
   res.json({
     ...user._doc,
+    holidayEntitlement,
+    carryOver,
+    daysTaken,
     remainingBalance,
     duvetDaysUsed: usedThisYear,
-    duvetRemaining: Math.max(0, 8 - usedThisYear)
+    duvetRemaining: Math.max(0, 8 - usedThisYear),
+    isWorking: typeof user?.isWorking !== 'undefined' ? user.isWorking : (importedStaff?.isWorking ?? true)
   });
+
 });
 
 router.post("/duvet-day", auth, async (req, res) => {
@@ -75,7 +97,7 @@ router.post("/holiday-payout", auth, async (req, res) => {
 
     const payout = await HolidayPayout.create({
       userId: user._id,
-      staffName: user.name,
+      staffName: user.name || user.email || 'Unknown',
       fromDate,
       toDate,
       numberOfDays,

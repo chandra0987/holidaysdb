@@ -2,11 +2,16 @@ const User = require("../models/User");
 const DuvetDay = require("../models/Day");
 const HolidayRequest = require("../models/HolidayRequest");
 
+const toNumber = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 
 const getBalanceData = (user) => {
-  const holidayEntitlement = user.holidayEntitlement || 0;
-  const carryOver = user.carryOver || 0;
-  const daysTaken = user.daysTaken || 0;
+  const holidayEntitlement = toNumber(user?.holidayEntitlement, 0);
+  const carryOver = toNumber(user?.carryOver, 0);
+  const daysTaken = toNumber(user?.daysTaken, 0);
 
   return {
     remainingBalance: holidayEntitlement + carryOver - daysTaken
@@ -99,21 +104,22 @@ exports.createHolidayRequest =
       const user = await User.findById(req.user.id);
       const { remainingBalance } = getBalanceData(user);
 
-      // VALIDATION
-      if (days > remainingBalance) {
+      if (type !== 'Duvet Day' && days > remainingBalance) {
         return res.status(400).json({
           success: false,
           message: "Insufficient holiday balance"
         });
       }
 
+      const requestedType = type || 'Regular';
+
       await HolidayRequest.create({
         userId: user._id,
-        staffName: user.name,
+        staffName: user.name || user.email || 'Unknown',
         days,
         targetMonth,
         date: date || new Date().toISOString().split('T')[0],
-        type: type || 'Regular',
+        type: requestedType,
         reason: reason || '',
         status: 'pending'
       });

@@ -36,6 +36,10 @@ const staffLeaveSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    isWorking: {
+      type: Boolean,
+      default: true
+    },
     accountCreated: {
       type: Boolean,
       default: false,

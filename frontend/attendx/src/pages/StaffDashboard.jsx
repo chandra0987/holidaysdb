@@ -1,11 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Calendar, Clock, AlertTriangle, CheckCircle, Send } from 'lucide-react';
 
 const StaffDashboard = () => {
-  const { user, leaveRequests, requestLeave, duvetLogs } = useAuth();
+  const { user, leaveRequests, requestLeave, duvetLogs, fetchProfile } = useAuth();
   const navigate = useNavigate();
+  const currentUser = user || {};
+
+  const toNumber = (value, fallback = 0) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,6 +27,37 @@ const StaffDashboard = () => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
   };
+
+  useEffect(() => {
+    if (!user) return;
+
+    fetchProfile();
+
+    const intervalId = setInterval(() => {
+      fetchProfile();
+    }, 30000);
+
+    const handleFocus = () => {
+      fetchProfile();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [user, fetchProfile]);
+
+  if (!user) {
+    return (
+      <div className="container fade-in" style={{ paddingTop: '2rem' }}>
+        <div className="glass-panel" style={{ textAlign: 'center', padding: '2rem' }}>
+          Loading staff profile...
+        </div>
+      </div>
+    );
+  }
 
   const handleRequestLeave = async (e) => {
     e.preventDefault();
@@ -51,7 +88,12 @@ const StaffDashboard = () => {
     }
   };
 
-  const myRequests = leaveRequests.filter(r => r.userId === user._id || r.staffName === user.name);
+  const myRequests = leaveRequests.filter(r =>
+    String(r.userId) === String(currentUser._id) ||
+    r.staffName === currentUser.name ||
+    r.staffName === currentUser.email ||
+    String(r.staffName || '').toLowerCase() === String(currentUser.name || '').toLowerCase()
+  );
 
   // compute approved leave days (sum of days for approved requests)
   const approvedLeaveDays = myRequests
@@ -59,20 +101,20 @@ const StaffDashboard = () => {
     .reduce((sum, r) => sum + (parseInt(r.days, 10) || 0), 0);
 
   // duvet days logged by this user
-  const myDuvetLogs = (duvetLogs || []).filter(d => String(d.userId) === String(user._id) || (d.userId && d.userId._id && String(d.userId._id) === String(user._id)));
+  const myDuvetLogs = (duvetLogs || []).filter(d => String(d.userId) === String(currentUser._id) || (d.userId && d.userId._id && String(d.userId._id) === String(currentUser._id)));
   const duvetDaysCount = myDuvetLogs.length;
   const duvetDaysRemaining = Math.max(0, 8 - duvetDaysCount);
 
   // Holiday entitlement metrics
-  const holidayEntitlement = user.holidayEntitlement || 28;
-  const carryOver = user.carryOver || 0;
-  const daysTaken = user.daysTaken || 0;
+  const holidayEntitlement = toNumber(currentUser.holidayEntitlement, 28);
+  const carryOver = toNumber(currentUser.carryOver, 0);
+  const daysTaken = toNumber(currentUser.daysTaken, 0);
   const remainingBalance = holidayEntitlement + carryOver - daysTaken;
 
   return (
     <div className="container fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', gap: '1rem', flexWrap: 'wrap' }}>
-        <h2>Welcome, {user.name}</h2>
+        <h2>Welcome, {currentUser.name || 'Staff Member'}</h2>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
             <Calendar size={18} /> Request Leave
@@ -119,6 +161,15 @@ const StaffDashboard = () => {
           <div className="stat-value" style={{ color: remainingBalance < 0 ? '#f44336' : '#4CAF50' }}>{remainingBalance}</div>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Dynamically calculated</div>
         </div>
+
+        <div className="glass-panel stat-card">
+          <div className="stat-header">
+            <div className="stat-icon orange"><Clock size={24} /></div>
+            <h3>Working Status</h3>
+          </div>
+          <div className="stat-value">{currentUser.isWorking ? 'Working' : 'Not Working'}</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Synced from imported profile</div>
+        </div>
       </div>
 
       <div className="dashboard-grid full-width">
@@ -127,7 +178,7 @@ const StaffDashboard = () => {
             <div className="stat-icon blue"><Clock size={24} /></div>
             <h3>Total Working Days</h3>
           </div>
-          <div className="stat-value">{user.totalDays || 0}</div>
+          <div className="stat-value">{currentUser.totalDays || 0}</div>
         </div>
         
         <div className="glass-panel stat-card">
@@ -135,7 +186,7 @@ const StaffDashboard = () => {
             <div className="stat-icon green"><CheckCircle size={24} /></div>
             <h3>Present Days</h3>
           </div>
-          <div className="stat-value">{user.presentDays || 0}</div>
+          <div className="stat-value">{currentUser.presentDays || 0}</div>
         </div>
 
         <div className="glass-panel stat-card">
