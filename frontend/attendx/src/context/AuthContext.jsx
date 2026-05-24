@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useEffect, useState } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -39,6 +39,30 @@ export const AuthProvider = ({ children }) => {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {})
   });
+
+  const areUsersEqual = (left, right) => {
+    if (left === right) return true;
+    if (!left || !right) return false;
+
+    const fields = [
+      '_id',
+      'role',
+      'name',
+      'email',
+      'holidayEntitlement',
+      'carryOver',
+      'daysTaken',
+      'daysTakenSoFar',
+      'duvetDaysUsed',
+      'isWorking',
+      'presentDays',
+      'totalDays',
+      'department',
+      'serviceYears'
+    ];
+
+    return fields.every((field) => `${left[field] ?? ''}` === `${right[field] ?? ''}`);
+  };
 
   const handleUnauthorized = (response) => {
     if (response && response.status === 401) {
@@ -126,7 +150,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const fetchDuvetLogs = async () => {
+  const fetchDuvetLogs = useCallback(async () => {
     if (!token) return;
     try {
       const endpoint = user?.role === 'admin' ? `${API_URL}/api/admin/duvet-logs` : `${API_URL}/api/staff/duvet-logs`;
@@ -139,9 +163,9 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Fetch duvet logs error:', error);
     }
-  };
+  }, [token, user]);
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     if (!token || !user) return;
     try {
       const endpoint = user.role === 'admin' ? `${API_URL}/api/admin/staff` : `${API_URL}/api/staff/profile`;
@@ -153,15 +177,21 @@ export const AuthProvider = ({ children }) => {
 
       if (user.role === 'staff') {
         const nextUser = data.user || data;
-        setUser(nextUser);
-        localStorage.setItem('attendx_user', JSON.stringify(nextUser));
+        setUser((currentUser) => {
+          if (areUsersEqual(currentUser, nextUser)) {
+            return currentUser;
+          }
+
+          localStorage.setItem('attendx_user', JSON.stringify(nextUser));
+          return nextUser;
+        });
       }
     } catch (error) {
       console.error('Fetch profile error:', error);
     }
-  };
+  }, [token, user]);
 
-  const fetchHolidayPayouts = async () => {
+  const fetchHolidayPayouts = useCallback(async () => {
     if (!token) return;
     try {
       const response = await fetch(`${API_URL}/api/admin/holiday-payouts`, {
@@ -173,7 +203,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Fetch holiday payouts error:', error);
     }
-  };
+  }, [token]);
 
   const createStaff = async (staffData) => {
     if (!token) {

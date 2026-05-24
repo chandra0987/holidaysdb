@@ -18,6 +18,7 @@ const StaffDashboard = () => {
   const [leaveType, setLeaveType] = useState('Regular');
   const [leaveReason, setLeaveReason] = useState('');
   const [leaveDays, setLeaveDays] = useState('1');
+  const [submitNotice, setSubmitNotice] = useState('');
   const today = new Date().toISOString().split('T')[0];
 
   // Toast state
@@ -47,7 +48,7 @@ const StaffDashboard = () => {
       clearInterval(intervalId);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [user, fetchProfile]);
+  }, [user?._id, user?.role, fetchProfile]);
 
   if (!user) {
     return (
@@ -77,13 +78,13 @@ const StaffDashboard = () => {
     });
 
     if (result && result.success) {
-      setIsModalOpen(false);
       setLeaveDate('');
       setLeaveType('Regular');
       setLeaveReason('');
       setLeaveDays('1');
-      showToast('Your submission is completed. Admin will review it.');
+      setSubmitNotice('Your submission is completed. Admin will review it.');
     } else {
+      setSubmitNotice('');
       showToast(result?.message || 'Failed to submit request', 'error');
     }
   };
@@ -272,8 +273,24 @@ const StaffDashboard = () => {
         <div className="modal leave-request-modal">
           <div className="modal-header">
             <h3>Request Leave</h3>
-            <button className="close-btn" onClick={() => setIsModalOpen(false)}>&times;</button>
+            <button className="close-btn" onClick={() => {
+              setIsModalOpen(false);
+              setSubmitNotice('');
+            }}>&times;</button>
           </div>
+
+          {submitNotice && (
+            <div style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.06)',
+              color: 'var(--text-main)',
+              padding: '0.85rem 1rem',
+              borderRadius: 'var(--radius-sm)',
+              marginBottom: '1rem',
+              border: '1px solid var(--border)'
+            }}>
+              {submitNotice}
+            </div>
+          )}
           
           <form onSubmit={handleRequestLeave} className="stacked-form">
             <div className="form-group">

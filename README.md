@@ -215,6 +215,154 @@ graph TB
 
 ---
 
+## Page Diagrams
+
+### **1. Staff Login Page**
+
+```mermaid
+flowchart TD
+    A[Open staff login page] --> B[Enter email or name]
+    B --> C[Enter password]
+    C --> D[Click Sign In]
+    D --> E{Credentials valid?}
+    E -->|Yes| F[Save user + token]
+    F --> G[Redirect to staff dashboard]
+    E -->|No| H[Show login error]
+```
+
+### **2. Admin Login Page**
+
+```mermaid
+flowchart TD
+    A[Open admin login page] --> B[Enter email or name]
+    B --> C[Enter password]
+    C --> D[Click Sign In with Admin Credentials]
+    D --> E{Admin login valid?}
+    E -->|Yes| F[Save user + token]
+    F --> G[Redirect to admin dashboard]
+    E -->|No| H[Show admin access error]
+```
+
+### **3. Admin Register Page**
+
+```mermaid
+flowchart TD
+    A[Open admin register page] --> B[Enter name]
+    B --> C[Enter email]
+    C --> D[Enter password]
+    D --> E[Confirm password]
+    E --> F[Click Create Admin Account]
+    F --> G{Validation passed?}
+    G -->|Yes| H[Create admin account]
+    H --> I[Show success message]
+    I --> J[Redirect to admin login]
+    G -->|No| K[Show validation error]
+```
+
+### **4. Staff Dashboard Page**
+
+```mermaid
+flowchart TD
+    A[Load staff dashboard] --> B[Fetch profile + leave data]
+    B --> C[Show balances and duvet stats]
+    C --> D[Open Request Leave modal]
+    D --> E{Request type}
+    E -->|Regular leave| F[Enter future or current date]
+    E -->|Duvet day| G[Use today and 1 day]
+    F --> H[Submit request]
+    G --> H
+    H --> I[Show confirmation in modal]
+    I --> J[Admin reviews request]
+    C --> K[View request history]
+    C --> L[View duvet logs]
+```
+
+### **5. Holiday Request Page**
+
+```mermaid
+flowchart TD
+    A[Open holiday payout page] --> B[Enter leave dates]
+    B --> C[Enter number of days]
+    C --> D[Enter month and notes]
+    D --> E[Click submit]
+    E --> F{Request valid?}
+    F -->|Yes| G[Save payout request]
+    G --> H[Show success message]
+    H --> I[Admin reviews payout]
+    F -->|No| J[Show error message]
+```
+
+### **6. Admin Dashboard Page**
+
+```mermaid
+flowchart TD
+    A[Open admin dashboard] --> B[Load staff, requests, duvet logs, payouts]
+    B --> C[View staff directory]
+    B --> D[Review leave requests]
+    B --> E[Review duvet logs]
+    B --> F[Review holiday payouts]
+    B --> G[Import staff data]
+    B --> H[Export CSV reports]
+    D --> I[Approve or reject leave]
+    F --> J[Approve, reject, or mark paid]
+    G --> K[Create accounts from imported data]
+    G --> L[Clear imported snapshot]
+```
+
+### **7. Authentication Backend Flow**
+
+```mermaid
+flowchart TD
+    A[Login or register request] --> B[authController]
+    B --> C{Authenticate user}
+    C -->|Login| D[Check email or name]
+    D --> E[Compare password]
+    E --> F[Return JWT + user]
+    C -->|Register| G[Validate input]
+    G --> H[Hash password]
+    H --> I[Create admin or staff account]
+    F --> J[Client stores session]
+    I --> J
+```
+
+### **8. Staff Backend Flow**
+
+```mermaid
+flowchart TD
+    A[Staff action] --> B[staff controller]
+    B --> C{Request type}
+    C -->|Profile| D[Load staff profile]
+    C -->|Holiday request| E[Create leave request]
+    C -->|Duvet day| F[Create duvet log]
+    C -->|Holiday payout| G[Create payout request]
+    D --> H[Return profile data]
+    E --> H
+    F --> H
+    G --> H
+```
+
+### **9. Admin Backend Flow**
+
+```mermaid
+flowchart TD
+    A[Admin action] --> B[admin controller]
+    B --> C{Task}
+    C -->|Staff list| D[Return staff records]
+    C -->|Leave approvals| E[Approve or reject leave]
+    C -->|Duvet logs| F[Return duvet history]
+    C -->|Imported data| G[Return or clear imported staff]
+    C -->|Payouts| H[Approve reject or mark paid]
+    C -->|CSV export| I[Generate report file]
+    D --> J[Update dashboards]
+    E --> J
+    F --> J
+    G --> J
+    H --> J
+    I --> J
+```
+
+---
+
 ## Setup Instructions
 
 ### Prerequisites
