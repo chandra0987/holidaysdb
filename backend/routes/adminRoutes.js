@@ -7,6 +7,7 @@ const router = express.Router();
 const {
   getAllStaff,
   createStaff,
+  deleteStaff,
   createAdmin,
   createAdminPublic,
   adminExists,
@@ -38,6 +39,13 @@ router.post(
   "/staff",
   auth,
   createStaff
+);
+
+// DELETE STAFF BY ID
+router.delete(
+  "/staff/:id",
+  auth,
+  deleteStaff
 );
 
 // CREATE ADMIN (only callable by an authenticated admin)

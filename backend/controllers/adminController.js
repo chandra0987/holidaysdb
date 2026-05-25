@@ -122,6 +122,24 @@ exports.createStaff = async (req, res) => {
   }
 };
 
+// DELETE STAFF BY ID
+exports.deleteStaff = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Staff member not found.' });
+    }
+
+    await User.findByIdAndDelete(id);
+
+    res.status(200).json({ success: true, message: 'Staff member deleted successfully.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // GET HOLIDAY REQUESTS
 exports.getHolidayRequests =
   async (req, res) => {
@@ -288,22 +306,16 @@ exports.exportPayrollCSV =
           "Name",
           "Monthly Holiday Paid Days Requested",
           "Duvet Days taken in current pay cycle",
-          "Year-to-date outstanding balances",
-          "sum",
-          "multiple"
+          "Year-to-date outstanding balances"
         ].map(escapeCsvValue).join(",")
       ];
 
       records.forEach((record) => {
-        let sum = record.monthlyHolidayPaidDaysRequested+record.duvetDaysTakenInCurrentPayCycle+record.yearToDateOutstandingBalances;
-        let multiple = record.yearToDateOutstandingBalances*2;
         csvLines.push([
           record.name,
           record.monthlyHolidayPaidDaysRequested,
-          record.duvetDaysTakenInCurrentPayCycle, 
-          record.yearToDateOutstandingBalances,
-          sum,
-          multiple
+          record.duvetDaysTakenInCurrentPayCycle,
+          record.yearToDateOutstandingBalances
         ].map(escapeCsvValue).join(","));
       });
 
