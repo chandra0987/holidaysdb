@@ -1,83 +1,66 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
 
 const AdminDashboard = () => {
   const {
     users,
     leaveRequests,
-    holidayPayouts,
-    duvetLogs,
     createStaff,
     updateLeaveStatus,
-    updatePayoutStatus,
-    fetchDuvetLogs,
     token,
   } = useAuth();
 
   const [activeTab, setActiveTab] = useState("staff");
 
-  const [searchQuery, setSearchQuery] = useState("");
-
   const [staffList, setStaffList] = useState([]);
 
-  // PROFILE MODAL
-  const [selectedStaff, setSelectedStaff] = useState(null);
-  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // NEW STAFF
+  const [selectedStaff, setSelectedStaff] = useState(null);
+
+  const [showProfileModal, setShowProfileModal] =
+    useState(false);
+
+  const [openMenuId, setOpenMenuId] =
+    useState(null);
+
+  // CREATE STAFF
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const fileInputRef = useRef(null);
-
   useEffect(() => {
-    setStaffList(users.filter((u) => u.role === "staff"));
+    setStaffList(
+      users.filter((u) => u.role === "staff")
+    );
   }, [users]);
 
   // =========================
   // HELPERS
   // =========================
 
-  const toNumber = (value, fallback = 0) => {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-  };
-
-  const getRemainingBalance = (staff) =>
-    toNumber(staff.remainingBalance,
-      toNumber(staff.holidayEntitlement, 0) +
-      toNumber(staff.carryOver, 0) -
-      toNumber(staff.daysTaken, 0)
+  const getRemainingBalance = (staff) => {
+    return (
+      (staff.holidayEntitlement || 0) +
+      (staff.carryOver || 0) -
+      (staff.daysTaken || 0)
     );
-
-  const getOverdue = (staff) => {
-    const balance = getRemainingBalance(staff);
-    return balance < 0 ? Math.abs(balance) : 0;
   };
-
-  const getDuvetStats = (staff) => ({
-    used: toNumber(staff.duvetDaysUsed, 0),
-    remaining: toNumber(
-      staff.duvetRemaining,
-      Math.max(0, 8 - toNumber(staff.duvetDaysUsed, 0))
-    ),
-  });
 
   // =========================
-  // FILTER STAFF
+  // SEARCH
   // =========================
 
   const filteredStaff = staffList.filter(
     (staff) =>
-      `${staff.name || ""}`
-        .toLowerCase()
+      staff.name
+        ?.toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
-      `${staff.email || ""}`
-        .toLowerCase()
+      staff.email
+        ?.toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
-      `${staff.department || ""}`
-        .toLowerCase()
+      staff.department
+        ?.toLowerCase()
         .includes(searchQuery.toLowerCase())
   );
 
@@ -95,7 +78,7 @@ const AdminDashboard = () => {
     });
 
     if (result.success) {
-      alert("Staff created successfully");
+      alert("Staff Created");
 
       setName("");
       setEmail("");
@@ -122,14 +105,17 @@ const AdminDashboard = () => {
 
   const handleDelete = async (id) => {
     const confirmDelete = window.confirm(
-      "Are you sure you want to delete this staff member?"
+      "Delete this staff member?"
     );
 
     if (!confirmDelete) return;
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/staff/${id}`,
+        `${
+          import.meta.env.VITE_API_URL ||
+          "http://localhost:5000"
+        }/api/admin/staff/${id}`,
         {
           method: "DELETE",
           headers: {
@@ -145,13 +131,17 @@ const AdminDashboard = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Delete failed");
+        throw new Error(data.message);
       }
 
-      alert("Staff deleted successfully");
+      alert("Deleted Successfully");
 
       setStaffList((prev) =>
-        prev.filter((staff) => staff._id !== id && staff.id !== id)
+        prev.filter(
+          (staff) =>
+            staff._id !== id &&
+            staff.id !== id
+        )
       );
     } catch (error) {
       alert(error.message);
@@ -168,57 +158,10 @@ const AdminDashboard = () => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "1.5rem",
+          marginBottom: "20px",
         }}
       >
         <h2>Admin Dashboard</h2>
-
-        <button
-          className="btn btn-secondary"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          Import Staff
-        </button>
-
-        <input
-          type="file"
-          ref={fileInputRef}
-          style={{ display: "none" }}
-        />
-      </div>
-
-      {/* STATS */}
-
-      <div className="dashboard-grid">
-
-        <div className="glass-panel stat-card atm-card">
-          <div className="stat-header">
-            <h3>Total Staff</h3>
-          </div>
-
-          <div className="stat-value">{staffList.length}</div>
-        </div>
-
-        <div className="glass-panel stat-card atm-card">
-          <div className="stat-header">
-            <h3>Pending Leaves</h3>
-          </div>
-
-          <div className="stat-value">
-            {leaveRequests.filter((r) => r.status === "pending").length}
-          </div>
-        </div>
-
-        <div className="glass-panel stat-card atm-card">
-          <div className="stat-header">
-            <h3>Pending Payouts</h3>
-          </div>
-
-          <div className="stat-value">
-            {holidayPayouts?.filter((p) => p.status === "pending").length || 0}
-          </div>
-        </div>
-
       </div>
 
       {/* TABS */}
@@ -228,22 +171,40 @@ const AdminDashboard = () => {
         <div className="auth-tabs">
 
           <div
-            className={`auth-tab ${activeTab === "staff" ? "active" : ""}`}
-            onClick={() => setActiveTab("staff")}
+            className={`auth-tab ${
+              activeTab === "staff"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setActiveTab("staff")
+            }
           >
-            Staff Directory
+            Staff
           </div>
 
           <div
-            className={`auth-tab ${activeTab === "requests" ? "active" : ""}`}
-            onClick={() => setActiveTab("requests")}
+            className={`auth-tab ${
+              activeTab === "requests"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setActiveTab("requests")
+            }
           >
-            Leave Requests
+            Requests
           </div>
 
           <div
-            className={`auth-tab ${activeTab === "new-staff" ? "active" : ""}`}
-            onClick={() => setActiveTab("new-staff")}
+            className={`auth-tab ${
+              activeTab === "new-staff"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setActiveTab("new-staff")
+            }
           >
             Add Staff
           </div>
@@ -253,171 +214,151 @@ const AdminDashboard = () => {
         {/* SEARCH */}
 
         {activeTab === "staff" && (
-          <div
-            style={{
-              marginBottom: "1.5rem",
-              marginTop: "1rem",
-            }}
-          >
+          <div style={{ margin: "20px 0" }}>
             <input
               type="text"
               className="form-control"
               placeholder="Search Staff..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) =>
+                setSearchQuery(e.target.value)
+              }
             />
           </div>
         )}
 
-        {/* STAFF TAB */}
+        {/* STAFF */}
 
         {activeTab === "staff" && (
 
           <div className="staff-card-grid">
 
-            {filteredStaff.length > 0 ? (
+            {filteredStaff.map((staff) => (
 
-              filteredStaff.map((staff) => {
+              <div
+                key={staff._id}
+                className="staff-card"
+                style={{
+                  position: "relative",
+                }}
+              >
 
-                const remainingBalance =
-                  getRemainingBalance(staff);
+                {/* 3 DOT MENU */}
 
-                const overdue =
-                  getOverdue(staff);
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "10px",
+                    right: "10px",
+                  }}
+                >
 
-                const duvetStats =
-                  getDuvetStats(staff);
-
-                return (
-
-                  <div
-                    className="staff-card"
-                    key={staff._id || staff.id}
+                  <button
+                    onClick={() =>
+                      setOpenMenuId(
+                        openMenuId === staff._id
+                          ? null
+                          : staff._id
+                      )
+                    }
+                    style={{
+                      border: "none",
+                      background: "none",
+                      fontSize: "24px",
+                      cursor: "pointer",
+                    }}
                   >
+                    ⋮
+                  </button>
 
-                    <div className="staff-card-top">
-
-                      <div>
-                        <div className="staff-card-label">
-                          Name
-                        </div>
-
-                        <div className="staff-card-value">
-                          {staff.name}
-                        </div>
-                      </div>
-
-                      <div className="staff-card-badge">
-                        <span className="badge badge-approved">
-                          {staff.department || "No Dept"}
-                        </span>
-                      </div>
-
-                    </div>
-
-                    <div className="staff-card-row">
-
-                      <div>
-                        <div className="staff-card-label">
-                          Remaining Balance
-                        </div>
-
-                        <div className="staff-card-value">
-                          {remainingBalance}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="staff-card-label">
-                          Overdue
-                        </div>
-
-                        <div
-                          className={`staff-card-value ${
-                            overdue > 0
-                              ? "overdue"
-                              : "normal"
-                          }`}
-                        >
-                          {overdue}
-                        </div>
-                      </div>
-
-                    </div>
-
-                    <div className="staff-card-meta">
-
-                      <div>
-                        Entitlement:
-                        {staff.holidayEntitlement || 0}
-                      </div>
-
-                      <div>
-                        Taken:
-                        {staff.daysTaken || 0}
-                      </div>
-
-                      <div>
-                        Duvet Used:
-                        {duvetStats.used}
-                      </div>
-
-                      <div>
-                        Duvet Remaining:
-                        {duvetStats.remaining}
-                      </div>
-
-                    </div>
-
-                    {/* BUTTONS */}
+                  {openMenuId === staff._id && (
 
                     <div
                       style={{
-                        display: "flex",
-                        gap: "0.5rem",
-                        marginTop: "1rem",
-                        flexWrap: "wrap",
+                        position: "absolute",
+                        top: "35px",
+                        right: "0",
+                        width: "150px",
+                        background: "#fff",
+                        borderRadius: "10px",
+                        boxShadow:
+                          "0 2px 10px rgba(0,0,0,0.2)",
+                        zIndex: 100,
                       }}
                     >
 
                       <button
-                        className="btn btn-primary"
-                        onClick={() =>
-                          handleViewProfile(staff)
-                        }
+                        onClick={() => {
+                          handleViewProfile(staff);
+                          setOpenMenuId(null);
+                        }}
+                        style={{
+                          width: "100%",
+                          border: "none",
+                          background: "none",
+                          padding: "12px",
+                          textAlign: "left",
+                          cursor: "pointer",
+                        }}
                       >
                         View Profile
                       </button>
 
                       <button
-                        className="btn btn-danger"
-                        onClick={() =>
+                        onClick={() => {
                           handleDelete(
-                            staff._id || staff.id
-                          )
-                        }
+                            staff._id
+                          );
+                          setOpenMenuId(null);
+                        }}
+                        style={{
+                          width: "100%",
+                          border: "none",
+                          background: "none",
+                          padding: "12px",
+                          textAlign: "left",
+                          cursor: "pointer",
+                          color: "red",
+                        }}
                       >
                         Delete
                       </button>
 
                     </div>
 
-                  </div>
-                );
-              })
+                  )}
 
-            ) : (
+                </div>
 
-              <div className="empty-card">
-                No staff members found
+                {/* STAFF INFO */}
+
+                <h3>{staff.name}</h3>
+
+                <p>
+                  <strong>Email:</strong>{" "}
+                  {staff.email}
+                </p>
+
+                <p>
+                  <strong>Department:</strong>{" "}
+                  {staff.department ||
+                    "No Department"}
+                </p>
+
+                <p>
+                  <strong>Remaining:</strong>{" "}
+                  {getRemainingBalance(staff)}
+                </p>
+
               </div>
 
-            )}
+            ))}
 
           </div>
+
         )}
 
-        {/* REQUESTS TAB */}
+        {/* REQUESTS */}
 
         {activeTab === "requests" && (
 
@@ -431,7 +372,7 @@ const AdminDashboard = () => {
                   <th>Date</th>
                   <th>Reason</th>
                   <th>Status</th>
-                  <th>Actions</th>
+                  <th>Action</th>
                 </tr>
               </thead>
 
@@ -441,28 +382,27 @@ const AdminDashboard = () => {
 
                   <tr key={request._id}>
 
-                    <td>{request.staffName}</td>
+                    <td>
+                      {request.staffName}
+                    </td>
 
                     <td>{request.date}</td>
 
                     <td>{request.reason}</td>
 
                     <td>
-                      <span
-                        className={`badge badge-${request.status}`}
-                      >
-                        {request.status}
-                      </span>
+                      {request.status}
                     </td>
 
                     <td>
 
-                      {request.status === "pending" && (
+                      {request.status ===
+                        "pending" && (
 
                         <div
                           style={{
                             display: "flex",
-                            gap: "0.5rem",
+                            gap: "10px",
                           }}
                         >
 
@@ -508,81 +448,65 @@ const AdminDashboard = () => {
 
         )}
 
-        {/* NEW STAFF */}
+        {/* ADD STAFF */}
 
         {activeTab === "new-staff" && (
 
-          <div style={{ maxWidth: "500px" }}>
+          <form
+            onSubmit={handleCreateStaff}
+            className="stacked-form"
+            style={{
+              maxWidth: "500px",
+            }}
+          >
 
-            <form
-              onSubmit={handleCreateStaff}
-              className="stacked-form"
+            <div className="form-group">
+              <label>Name</label>
+
+              <input
+                type="text"
+                className="form-control"
+                value={name}
+                onChange={(e) =>
+                  setName(e.target.value)
+                }
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Email</label>
+
+              <input
+                type="email"
+                className="form-control"
+                value={email}
+                onChange={(e) =>
+                  setEmail(e.target.value)
+                }
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Password</label>
+
+              <input
+                type="password"
+                className="form-control"
+                value={password}
+                onChange={(e) =>
+                  setPassword(e.target.value)
+                }
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-primary"
             >
+              Create Staff
+            </button>
 
-              <div className="form-group">
-
-                <label className="form-label">
-                  Full Name
-                </label>
-
-                <input
-                  type="text"
-                  className="form-control"
-                  value={name}
-                  onChange={(e) =>
-                    setName(e.target.value)
-                  }
-                  required
-                />
-
-              </div>
-
-              <div className="form-group">
-
-                <label className="form-label">
-                  Email
-                </label>
-
-                <input
-                  type="email"
-                  className="form-control"
-                  value={email}
-                  onChange={(e) =>
-                    setEmail(e.target.value)
-                  }
-                  required
-                />
-
-              </div>
-
-              <div className="form-group">
-
-                <label className="form-label">
-                  Password
-                </label>
-
-                <input
-                  type="password"
-                  className="form-control"
-                  value={password}
-                  onChange={(e) =>
-                    setPassword(e.target.value)
-                  }
-                  required
-                />
-
-              </div>
-
-              <button
-                type="submit"
-                className="btn btn-primary"
-              >
-                Create Staff
-              </button>
-
-            </form>
-
-          </div>
+          </form>
 
         )}
 
@@ -590,154 +514,133 @@ const AdminDashboard = () => {
 
       {/* PROFILE MODAL */}
 
-      {showProfileModal && selectedStaff && (
+      {showProfileModal &&
+        selectedStaff && (
 
-        <div className="modal-overlay active">
+          <div className="modal-overlay active">
 
-          <div className="modal">
+            <div className="modal">
 
-            <div className="modal-header">
+              <div className="modal-header">
 
-              <h3>Staff Profile</h3>
+                <h3>
+                  Staff Profile
+                </h3>
 
-              <button
-                className="close-btn"
-                onClick={() => {
-                  setShowProfileModal(false);
-                  setSelectedStaff(null);
-                }}
+                <button
+                  className="close-btn"
+                  onClick={() => {
+                    setShowProfileModal(
+                      false
+                    );
+
+                    setSelectedStaff(
+                      null
+                    );
+                  }}
+                >
+                  ×
+                </button>
+
+              </div>
+
+              <div
+                className="stacked-form"
               >
-                &times;
-              </button>
 
-            </div>
+                <div className="form-group">
+                  <label>Name</label>
 
-            <div className="stacked-form">
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={
+                      selectedStaff.name
+                    }
+                    readOnly
+                  />
+                </div>
 
-              <div className="form-group">
+                <div className="form-group">
+                  <label>Email</label>
 
-                <label className="form-label">
-                  Name
-                </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={
+                      selectedStaff.email
+                    }
+                    readOnly
+                  />
+                </div>
 
-                <input
-                  type="text"
-                  className="form-control"
-                  value={selectedStaff.name || ""}
-                  readOnly
-                />
+                <div className="form-group">
+                  <label>
+                    Department
+                  </label>
 
-              </div>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={
+                      selectedStaff.department
+                    }
+                    readOnly
+                  />
+                </div>
 
-              <div className="form-group">
+                <div className="form-group">
+                  <label>
+                    Holiday Entitlement
+                  </label>
 
-                <label className="form-label">
-                  Email
-                </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={
+                      selectedStaff.holidayEntitlement
+                    }
+                    readOnly
+                  />
+                </div>
 
-                <input
-                  type="text"
-                  className="form-control"
-                  value={selectedStaff.email || ""}
-                  readOnly
-                />
+                <div className="form-group">
+                  <label>
+                    Days Taken
+                  </label>
 
-              </div>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={
+                      selectedStaff.daysTaken
+                    }
+                    readOnly
+                  />
+                </div>
 
-              <div className="form-group">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowProfileModal(
+                      false
+                    );
 
-                <label className="form-label">
-                  Department
-                </label>
-
-                <input
-                  type="text"
-                  className="form-control"
-                  value={selectedStaff.department || ""}
-                  readOnly
-                />
-
-              </div>
-
-              <div className="form-group">
-
-                <label className="form-label">
-                  Holiday Entitlement
-                </label>
-
-                <input
-                  type="text"
-                  className="form-control"
-                  value={
-                    selectedStaff.holidayEntitlement || 0
-                  }
-                  readOnly
-                />
-
-              </div>
-
-              <div className="form-group">
-
-                <label className="form-label">
-                  Days Taken
-                </label>
-
-                <input
-                  type="text"
-                  className="form-control"
-                  value={selectedStaff.daysTaken || 0}
-                  readOnly
-                />
-
-              </div>
-
-              <div className="form-group">
-
-                <label className="form-label">
-                  Remaining Balance
-                </label>
-
-                <input
-                  type="text"
-                  className="form-control"
-                  value={getRemainingBalance(selectedStaff)}
-                  readOnly
-                />
+                    setSelectedStaff(
+                      null
+                    );
+                  }}
+                >
+                  Close
+                </button>
 
               </div>
-
-              <div className="form-group">
-
-                <label className="form-label">
-                  Service Years
-                </label>
-
-                <input
-                  type="text"
-                  className="form-control"
-                  value={selectedStaff.serviceYears || 0}
-                  readOnly
-                />
-
-              </div>
-
-              <button
-                className="btn btn-secondary"
-                onClick={() => {
-                  setShowProfileModal(false);
-                  setSelectedStaff(null);
-                }}
-              >
-                Close
-              </button>
 
             </div>
 
           </div>
 
-        </div>
-
-      )}
+        )}
 
     </div>
   );
