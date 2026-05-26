@@ -547,7 +547,7 @@ const AdminDashboard = () => {
                           lineHeight: 1,
                           padding: "0.25rem 0.5rem",
                           borderRadius: "6px",
-                          color: "#ffffff",
+                          color: "#000000",
                         }}
                         title="Options"
                       >
@@ -585,7 +585,7 @@ const AdminDashboard = () => {
                               color: "red",
                               fontSize: "0.9rem",
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.08)"}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)"}
                             onMouseLeave={(e) => e.currentTarget.style.background = "none"}
                           >
                             View
