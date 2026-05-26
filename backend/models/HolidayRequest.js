@@ -6,6 +6,8 @@ const holidayRequestSchema = new mongoose.Schema({
   days: Number,
   targetMonth: String,
   date: String,
+  fromDate: String,
+  toDate: String,
   type: {
     type: String,
     enum: ["Regular", "Duvet Day"],

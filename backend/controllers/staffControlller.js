@@ -98,7 +98,7 @@ exports.createHolidayRequest =
 
     try {
 
-      const { days, targetMonth, date, type, reason } =
+      const { days, targetMonth, date, fromDate, toDate, type, reason } =
         req.body;
 
       const user = await User.findById(req.user.id);
@@ -119,6 +119,8 @@ exports.createHolidayRequest =
         days,
         targetMonth,
         date: date || new Date().toISOString().split('T')[0],
+        fromDate: fromDate || date || null,
+        toDate: toDate || null,
         type: requestedType,
         reason: reason || '',
         status: 'pending'

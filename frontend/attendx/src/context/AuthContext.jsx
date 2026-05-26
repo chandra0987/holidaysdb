@@ -318,6 +318,8 @@ export const AuthProvider = ({ children }) => {
           days: requestData.days || 1,
           targetMonth: requestData.targetMonth || new Date().toISOString().split('T')[0],
           date: requestData.date,
+          fromDate: requestData.date,
+          toDate: requestData.toDate,
           type: requestData.type,
           reason: requestData.reason
         })

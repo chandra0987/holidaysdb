@@ -48,6 +48,20 @@ const AdminDashboard = () => {
     return Number.isFinite(parsed) ? parsed : fallback;
   };
 
+  const formatDate = (val) => {
+    if (!val || typeof val !== "string") return null;
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  };
+
+  const formatDateRange = (request) => {
+    const fromDate = formatDate(request.fromDate) || formatDate(request.date);
+    const toDate = formatDate(request.toDate);
+    if (fromDate && toDate && fromDate !== toDate) return `${fromDate} - ${toDate}`;
+    if (fromDate) return fromDate;
+    return "—";
+  };
+
   const getRemainingBalance = (staff) =>
     toNumber(staff.remainingBalance,
       toNumber(staff.holidayEntitlement, 0) +
@@ -659,7 +673,7 @@ const AdminDashboard = () => {
 
                     <td>{request.staffName}</td>
 
-                    <td>{request.date}</td>
+                    <td>{formatDateRange(request)}</td>
 
                     <td>{request.reason}</td>
 
