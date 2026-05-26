@@ -71,7 +71,7 @@ function App() {
           path="/staff/*" 
           element={
             <ProtectedRoute role="staff">
-              <StaffDashboard />
+              <StaffDashboard/>
             </ProtectedRoute>
           } 
         />
@@ -82,7 +82,7 @@ function App() {
               <HolidayRequest />
             </ProtectedRoute>
           } 
-        />
+      StaffDashboard  />
       </Routes>
     </Router>
   );
