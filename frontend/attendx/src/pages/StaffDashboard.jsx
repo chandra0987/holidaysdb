@@ -14,12 +14,36 @@ const StaffDashboard = () => {
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [leaveDate, setLeaveDate] = useState('');
+  const [leaveFromDate, setLeaveFromDate] = useState('');
+  const [leaveToDate, setLeaveToDate] = useState('');
   const [leaveType, setLeaveType] = useState('Regular');
   const [leaveReason, setLeaveReason] = useState('');
-  const [leaveDays, setLeaveDays] = useState('1');
+  const [leaveDays, setLeaveDays] = useState(0);
   const [submitNotice, setSubmitNotice] = useState('');
   const today = new Date().toISOString().split('T')[0];
+
+  const calculateLeaveDays = (start, end) => {
+    if (!start || !end) return 0;
+    let count = 0;
+    const cur = new Date(start);
+    const last = new Date(end);
+    while (cur <= last) {
+      const d = cur.getDay();
+      if (d !== 0 && d !== 6) count++;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+  };
+
+  const handleFromDateChange = (e) => {
+    setLeaveFromDate(e.target.value);
+    setLeaveDays(calculateLeaveDays(e.target.value, leaveToDate));
+  };
+
+  const handleToDateChange = (e) => {
+    setLeaveToDate(e.target.value);
+    setLeaveDays(calculateLeaveDays(leaveFromDate, e.target.value));
+  };
 
   // Toast state
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
@@ -62,7 +86,7 @@ const StaffDashboard = () => {
 
   const handleRequestLeave = async (e) => {
     e.preventDefault();
-    if (!leaveDate || !leaveReason || !leaveDays) return;
+    if (!leaveFromDate || !leaveToDate || !leaveReason || leaveDays < 1) return;
     // enforce duvet day limit
     if (leaveType === 'Duvet Day' && duvetDaysCount >= 8) {
       showToast('Maximum duvet days reached', 'error');
@@ -70,18 +94,20 @@ const StaffDashboard = () => {
     }
 
     const result = await requestLeave({ 
-      date: leaveDate, 
+      date: leaveFromDate,
+      toDate: leaveToDate,
       type: leaveType, 
       reason: leaveReason,
-      days: parseInt(leaveDays, 10),
+      days: leaveDays,
       targetMonth: new Date().toISOString().split('T')[0]
     });
 
     if (result && result.success) {
-      setLeaveDate('');
+      setLeaveFromDate('');
+      setLeaveToDate('');
       setLeaveType('Regular');
       setLeaveReason('');
-      setLeaveDays('1');
+      setLeaveDays(0);
       setSubmitNotice('Your submission is completed. Admin will review it.');
     } else {
       setSubmitNotice('');
@@ -276,6 +302,9 @@ const StaffDashboard = () => {
             <button className="close-btn" onClick={() => {
               setIsModalOpen(false);
               setSubmitNotice('');
+              setLeaveFromDate('');
+              setLeaveToDate('');
+              setLeaveDays(0);
             }}>&times;</button>
           </div>
 
@@ -294,14 +323,35 @@ const StaffDashboard = () => {
           
           <form onSubmit={handleRequestLeave} className="stacked-form">
             <div className="form-group">
-              <label className="form-label">Select Date</label>
+              <label className="form-label">From Date</label>
               <input
                 type="date"
                 className="form-control"
-                value={leaveDate}
-                onChange={(e) => setLeaveDate(e.target.value)}
+                value={leaveFromDate}
+                onChange={handleFromDateChange}
                 required
                 min={leaveType === 'Duvet Day' ? today : undefined}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">To Date</label>
+              <input
+                type="date"
+                className="form-control"
+                value={leaveToDate}
+                onChange={handleToDateChange}
+                required
+                min={leaveFromDate || (leaveType === 'Duvet Day' ? today : undefined)}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Number of Days</label>
+              <input
+                type="number"
+                className="form-control"
+                value={leaveDays}
+                readOnly
+                style={{ backgroundColor: 'rgba(0,0,0,0.04)', cursor: 'default' }}
               />
             </div>
             <div className="form-group">
@@ -312,7 +362,7 @@ const StaffDashboard = () => {
                   onChange={(e) => {
                     const v = e.target.value;
                     setLeaveType(v);
-                    if (v === 'Duvet Day') setLeaveDays('1');
+                    if (v === 'Duvet Day') setLeaveDays(1);
                   }}
                   required
                 >
@@ -322,19 +372,7 @@ const StaffDashboard = () => {
                   </option>
                 </select>
             </div>
-            <div className="form-group">
-              <label className="form-label">Number of Days</label>
-              <input
-                type="number"
-                className="form-control"
-                value={leaveDays}
-                  onChange={(e) => setLeaveDays(e.target.value)}
-                  disabled={leaveType === 'Duvet Day'}
-                min="1"
-                max="30"
-                required
-              />
-            </div>
+
             <div className="form-group">
               <label className="form-label">Note to Admin / Reason</label>
               <textarea
