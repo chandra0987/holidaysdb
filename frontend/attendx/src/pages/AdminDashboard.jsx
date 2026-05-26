@@ -547,7 +547,7 @@ const AdminDashboard = () => {
                           lineHeight: 1,
                           padding: "0.25rem 0.5rem",
                           borderRadius: "6px",
-                          color: "inherit",
+                          color: "#ffffff",
                         }}
                         title="Options"
                       >
