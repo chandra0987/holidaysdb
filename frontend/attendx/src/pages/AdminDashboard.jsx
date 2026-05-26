@@ -560,8 +560,8 @@ const AdminDashboard = () => {
                             position: "absolute",
                             top: "110%",
                             right: 0,
-                            background: "var(--card-bg, #1e1e2e)",
-                            border: "1px solid var(--border-color, #333)",
+                            background: "var(--card-bg, #000000)",
+                            border: "1px solid var(--border-color, #faf0f0)",
                             borderRadius: "8px",
                             boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
                             zIndex: 100,
@@ -582,10 +582,10 @@ const AdminDashboard = () => {
                               background: "none",
                               border: "none",
                               cursor: "pointer",
-                              color: "red",
+                              color: "#ffffff",
                               fontSize: "0.9rem",
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)"}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(15, 15, 15, 0.91)"}
                             onMouseLeave={(e) => e.currentTarget.style.background = "none"}
                           >
                             View
@@ -604,10 +604,10 @@ const AdminDashboard = () => {
                               background: "none",
                               border: "none",
                               cursor: "pointer",
-                              color: "#e74c3c",
+                              color: "#ffffff",
                               fontSize: "0.9rem",
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(231,76,60,0.12)"}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(15, 15, 15, 0.91)"}
                             onMouseLeave={(e) => e.currentTarget.style.background = "none"}
                           >
                             Delete
